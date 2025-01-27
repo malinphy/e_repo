@@ -4,11 +4,11 @@ import boto3
 from sagemaker.amazon.amazon_estimator import get_image_uri 
 from sagemaker.session import s3_input, Session
 import urllib
-
-import boto3
-from botocore.exceptions import NoCredentialsError, PartialCredentialsError
+from botocore.exceptions import NoCredentialsError, PartialCredentialsError, ClientError
 import os
-import boto3
+import logging
+
+
 
 def download_all_files(bucket_name, prefix="", local_dir="."):
     s3 = boto3.client('s3')
@@ -24,8 +24,31 @@ def download_all_files(bucket_name, prefix="", local_dir="."):
     else:
         print("No files found.")
 
-bucket_name = "esci-aws"
-prefix = "clean_data/df_task_1_test_cleaned.csv"
-local_dir = "data"
 
-download_all_files(bucket_name, prefix, local_dir)        
+
+def upload_file(file_name, bucket, object_name=None):
+    """Upload a file to an S3 bucket
+
+    :param file_name: File to upload
+    :param bucket: Bucket to upload to
+    :param object_name: S3 object name. If not specified then file_name is used
+    :return: True if file was uploaded, else False
+    """
+
+    # If S3 object_name was not specified, use file_name
+    if object_name is None:
+        object_name = os.path.basename(file_name)
+
+    # Upload the file
+    s3_client = boto3.client('s3')
+    try:
+        response = s3_client.upload_file(file_name, bucket, object_name)
+    except ClientError as e:
+        logging.error(e)
+        return False
+    return True
+
+# file_name = r"E:\PERSONAL_PROJ\e_repo\data\df_task_2_test_cleaned.csv" 
+# bucket = "esci-aws"
+# object_name = "results/df_task_2_test_cleaned.csv"
+# upload_file(file_name,bucket,object_name)
