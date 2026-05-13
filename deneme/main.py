@@ -30,11 +30,7 @@ agent = create_deep_agent(
 
 # test promptları
 queries = [
-    # "15 * 8 kaç eder?",
-    # "Hello'yu Türkçeye çevir",
-    # "LangChain is a framework for building LLM applications. It provides tools for chaining models, memory, and agents. Summarize this.",
-    # "Amazon, eBay ve Walmart üzerinde 'nike snickers' fiyatlarını karşılaştır.",
-    "eBay üzerinde 'nike snickers' bul."
+    "Önce detaylı bir pazar araştırması planı yap, sonra eBay üzerinde 'nike snickers' fiyatlarını topla, bunları karşılaştırarak bir rapor oluştur ve her adımı 'write_todos' aracını kullanarak takip et."
 ]
 
 for q in queries:
@@ -42,9 +38,19 @@ for q in queries:
         {"messages": [{"role": "user", "content": q}]},
         config={"configurable": {"thread_id": "test-thread-final-perfect"}}
     )
+    print("\n--- SONUÇLAR ---")
+    todos = result.get("todos", [])
+    if todos:
+        print("TODO LISTESI:")
+        for todo in todos:
+            print(f"[{todo.get('status', 'pending')}] {todo.get('content', '')}")
+    else:
+        print("Herhangi bir TODO olusmadi.")
+        
     print("\nSoru:", q)
     msg = result["messages"][-1]
     content = msg.content
     if isinstance(content, list) and len(content) > 0 and "text" in content[0]:
         content = content[0]["text"]
     print("Cevap:", content)
+    print("-----------------\n")
