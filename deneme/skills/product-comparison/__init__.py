@@ -1,1 +1,0 @@
-# Product comparison skill package
