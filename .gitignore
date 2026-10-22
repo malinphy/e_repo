@@ -143,3 +143,6 @@ backend/data/
 lm_studio.py
 test_lm.py
 *vectorizer
+
+# Local agent skill files
+.github/skills/
