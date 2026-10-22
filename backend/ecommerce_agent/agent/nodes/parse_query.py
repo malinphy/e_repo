@@ -23,11 +23,17 @@ def _heuristic_parse(query: str) -> ParsedQuery:
     return ParsedQuery(keywords=query.strip(), engines=available_engines())
 
 
-def _llm_parse(llm: Any, query: str) -> ParsedQuery:
+def _llm_parse(llm: Any, query: str, message_history: list[dict[str, str]]) -> ParsedQuery:
     structured = llm.with_structured_output(ParsedQuery)
+    history_text = ""
+    if message_history:
+        history_text = "\n\nPrevious conversation:\n" + "\n".join(
+            f"{m.get('role', 'user')}: {m.get('content', '')}" for m in message_history
+        )
     prompt = (
         _SYSTEM_PROMPT.format(engines=", ".join(available_engines()))
-        + f"\n\nUser request: {query}"
+        + history_text
+        + f"\n\nCurrent user request: {query}"
     )
     parsed = structured.invoke(prompt)
     if isinstance(parsed, ParsedQuery):
@@ -38,12 +44,13 @@ def _llm_parse(llm: Any, query: str) -> ParsedQuery:
 def make_parse_query_node(deps: AgentDeps):
     def parse_query(state: AgentState) -> dict[str, Any]:
         query = state.get("query", "")
+        message_history = state.get("message_history") or []
         llm = deps.llm_factory()
         if llm is None:
             parsed = _heuristic_parse(query)
         else:
             try:
-                parsed = _llm_parse(llm, query)
+                parsed = _llm_parse(llm, query, message_history)
             except Exception as exc:  # noqa: BLE001 - degrade gracefully on LLM failure
                 logger.warning("LLM query parsing failed, using heuristic: %s", exc)
                 parsed = _heuristic_parse(query)

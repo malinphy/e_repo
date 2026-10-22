@@ -12,11 +12,17 @@ from ..services.engine_search import DEFAULT_NUM, MAX_NUM
 class SearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=500)
     user_id: str | None = None
+    thread_id: int | None = Field(
+        default=None, description="Associate this search with a chat thread (for history/memory)."
+    )
 
 
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=2000)
     user_id: str | None = None
+    thread_id: int | None = Field(
+        default=None, description="Continue this chat thread; loads and appends its history."
+    )
 
 
 class ProductOut(BaseModel):
@@ -43,6 +49,7 @@ class ProductOut(BaseModel):
 
 class SearchResponse(BaseModel):
     run_id: int | None = None
+    thread_id: int | None = None
     query: str
     engines: list[str] = Field(default_factory=list)
     answer: str = ""
@@ -56,6 +63,7 @@ class SearchResponse(BaseModel):
 
 class ChatResponse(BaseModel):
     run_id: int | None = None
+    thread_id: int | None = None
     query: str = ""
     answer: str = ""
     products: list[ProductOut] = Field(default_factory=list)
@@ -176,3 +184,58 @@ class HealthOut(BaseModel):
     status: str = "ok"
     version: str
     engines: list[str] = Field(default_factory=list)
+
+
+# --- Chat thread / message schemas ---
+
+
+class CreateThreadRequest(BaseModel):
+    user_id: str = Field(min_length=1, max_length=64)
+    title: str | None = Field(default=None, max_length=255)
+
+
+class ChatThreadOut(BaseModel):
+    id: int
+    user_id: str
+    title: str | None = None
+    created_at: datetime
+
+    @classmethod
+    def from_orm_row(cls, row: Any) -> "ChatThreadOut":
+        return cls(
+            id=row.id,
+            user_id=row.user_id,
+            title=row.title,
+            created_at=row.created_at,
+        )
+
+
+class SendMessageRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=2000)
+    user_id: str | None = None
+    thread_id: int | None = None
+
+
+class ChatMessageOut(BaseModel):
+    id: int
+    thread_id: int
+    role: str
+    content: str
+    run_id: int | None = None
+    created_at: datetime
+
+    @classmethod
+    def from_orm_row(cls, row: Any) -> "ChatMessageOut":
+        return cls(
+            id=row.id,
+            thread_id=row.thread_id,
+            role=row.role,
+            content=row.content,
+            run_id=row.run_id,
+            created_at=row.created_at,
+        )
+
+
+class ThreadHistoryOut(BaseModel):
+    thread_id: int
+    messages: list[ChatMessageOut] = Field(default_factory=list)

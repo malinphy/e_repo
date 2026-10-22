@@ -129,9 +129,13 @@ Run from the repo root with the local venv (`venv\Scripts\python.exe`).
 | GET | `/amazon` `/ebay` `/google_shopping` `/walmart` | **flat aliases** of `/engines/{engine}` — one fixed URL per marketplace for the frontend |
 | POST | `/engines/{engine}/search` | **raw** results from one marketplace (no LLM, no persistence) |
 | POST | `/engines/search` | raw results from several engines in one call (`engines` omitted ⇒ all) |
-| POST | `/search` | full agent run (`run_id`, `engines`, `answer`, `products`, `results`, `engine_errors`) |
-| POST | `/chat` | same pipeline, chat-shaped response (`run_id`, `query`, `answer`, `products`, `results`, `engine_errors`) |
+| POST | `/search` | full agent run (`run_id`, `engines`, `answer`, `products`, `results`, `engine_errors`); optional body `thread_id` |
+| POST | `/chat` | same pipeline, chat-shaped response (`run_id`, `query`, `answer`, `products`, `results`, `engine_errors`); optional body `thread_id` continues a thread and loads its history — with no `thread_id` but a `user_id`, a new thread is auto-created |
 | GET | `/search/history?user_id=<id>` | recent searches for a user |
+| POST | `/users/{user_id}/threads` | create a new chat thread for a user |
+| GET | `/users/{user_id}/threads` | list recent chat threads for a user |
+| POST | `/chat/{thread_id}/message` | send a message in a thread; runs the agent with conversation context |
+| GET | `/chat/{thread_id}/history` | all messages in a thread, oldest first |
 | GET | `/runs/{run_id}` | persisted run record (`completed` / `failed`) |
 | GET | `/runs/{run_id}/engines` | per-marketplace summary of that run (counts + errors) |
 | GET | `/runs/{run_id}/engines/{engine}` | **exactly** what one marketplace returned in that run |
@@ -177,6 +181,15 @@ Invoke-WebRequest -Uri "http://127.0.0.1:8000/walmart" -UseBasicParsing
 # pin an older run: /amazon?run_id=<run_id>
 Invoke-WebRequest -Uri "http://127.0.0.1:8000/runs/<run_id>/engines" -UseBasicParsing
 Invoke-WebRequest -Uri "http://127.0.0.1:8000/runs/<run_id>/engines/walmart" -UseBasicParsing
+
+# chat threads: /chat auto-creates a thread when given user_id without thread_id
+Invoke-WebRequest -Uri "http://127.0.0.1:8000/chat" -Method POST -ContentType "application/json" `
+  -Body '{"message":"nike ayakkabi","user_id":"demo"}' -UseBasicParsing
+# the response carries thread_id; keep it and pass it back to continue the conversation:
+Invoke-WebRequest -Uri "http://127.0.0.1:8000/chat" -Method POST -ContentType "application/json" `
+  -Body '{"message":"adidas ayakkabi","user_id":"demo","thread_id":1}' -UseBasicParsing
+Invoke-WebRequest -Uri "http://127.0.0.1:8000/chat/1/history" -UseBasicParsing
+Invoke-WebRequest -Uri "http://127.0.0.1:8000/users/demo/threads" -UseBasicParsing
 ```
 
 `POST /chat` and `POST /search` cost real credits (1 LLM call + 1 SerpAPI call per engine) and `POST /engines/*`

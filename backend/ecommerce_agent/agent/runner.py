@@ -38,6 +38,7 @@ def build_default_deps() -> AgentDeps:
 def run_agent(
     query: str,
     user_id: str | None = None,
+    thread_id: int | None = None,
     deps: AgentDeps | None = None,
     graph: Any | None = None,
 ) -> dict[str, Any]:
@@ -54,7 +55,12 @@ def run_agent(
 
     compiled = graph or build_graph(deps)
     final_state = compiled.invoke(
-        {"query": query, "user_id": user_id, "run_id": run_id},
+        {
+            "query": query,
+            "user_id": user_id,
+            "thread_id": thread_id,
+            "run_id": run_id,
+        },
         config={"recursion_limit": 25},
     )
     return dict(final_state)

@@ -12,7 +12,7 @@ from ..agent.graph import build_graph
 from ..agent.runner import build_default_deps
 from ..common.config import OVERRIDDEN_ENV, get_settings, mask_secret
 from ..common.db.init_db import init_db
-from . import health, root, routes_agent, routes_engines, routes_history
+from . import health, root, routes_agent, routes_chat, routes_engines, routes_history
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +47,7 @@ def create_app(agent_deps: AgentDeps | None = None) -> FastAPI:
     app.include_router(root.router)
     app.include_router(health.router)
     app.include_router(routes_agent.router)
+    app.include_router(routes_chat.router)
     app.include_router(routes_engines.router)
     app.include_router(routes_history.router)
 
