@@ -8,6 +8,11 @@ from .engine import get_engine
 def init_db() -> None:
     """Create all tables in the configured SQLite database."""
     # Import models so they are registered with Base.metadata before create_all.
-    from ...models import search_history, user_preferences, agent_runs  # noqa: F401
+    from ...models import (  # noqa: F401
+        agent_runs,
+        engine_results,
+        search_history,
+        user_preferences,
+    )
 
     Base.metadata.create_all(bind=get_engine())

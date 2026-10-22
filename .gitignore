@@ -143,8 +143,6 @@ backend/data/
 lm_studio.py
 test_lm.py
 *vectorizer
-.github/skills/debug-graph-run/SKILL.md
-.github/skills/add-graph-node/SKILL.md
-.github/skills/add-api-integration/SKILL.md
-.github/skills/write-tests/SKILL.md
-.github/copilot-instructions.md
+
+# Local agent skill files
+.github/skills/

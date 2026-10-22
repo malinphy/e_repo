@@ -5,6 +5,7 @@ import logging
 from typing import Any
 
 from ...repositories.agent_runs_repo import AgentRunRepository
+from ...repositories.engine_results_repo import EngineResultsRepository
 from ...repositories.search_history_repo import SearchHistoryRepository
 from ..deps import AgentDeps
 from ..state import AgentState
@@ -26,6 +27,12 @@ def make_persist_node(deps: AgentDeps):
                     runs.fail(run_id, error)
                 else:
                     runs.complete(run_id, answer)
+
+                EngineResultsRepository(session).replace_for_run(
+                    run_id,
+                    state.get("results") or {},
+                    state.get("engine_errors") or {},
+                )
 
             history = SearchHistoryRepository(session)
             history.add(
