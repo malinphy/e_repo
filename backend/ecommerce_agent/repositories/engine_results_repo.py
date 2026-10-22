@@ -103,3 +103,32 @@ class EngineResultsRepository:
             .limit(1)
         )
         return self._session.scalars(stmt).first()
+
+    def products_for_latest_run(self, user_id: str) -> list[EngineProduct]:
+            """Every product returned by the user's most recent *search* run.
+
+        Used by the cart worker to resolve "add the 1st one" style references
+        against the last search the user performed. Ordered by engine then
+        position, matching how results are presented.
+
+            A "search run" is one that actually recorded engine results; cart and
+            chit-chat runs have none, so they are skipped.
+            """
+            from ..models.agent_runs import AgentRun
+
+            latest = (
+                select(EngineProduct.run_id)
+                .join(AgentRun, AgentRun.id == EngineProduct.run_id)
+                .where(AgentRun.user_id == user_id)
+                .order_by(EngineProduct.run_id.desc())
+                .limit(1)
+            )
+            run_id = self._session.scalars(latest).first()
+            if run_id is None:
+                return []
+            stmt = (
+                select(EngineProduct)
+                .where(EngineProduct.run_id == run_id)
+                .order_by(EngineProduct.engine, EngineProduct.position)
+            )
+            return list(self._session.scalars(stmt).all())

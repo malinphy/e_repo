@@ -197,7 +197,7 @@ costs 1 SerpAPI call per engine, so prefer the pytest suite while iterating. Eve
 
 ### SerpAPI adapters (learned the hard way)
 
-Each engine is an **Adapter + Template Method**: the subclass declares `engine` + `query_param` and implements `normalize(raw)`; `SerpAPIEngineAdapter.search()` builds the request from those two attributes. Adding an engine means adding one class and one `ENGINE_CLASSES` entry — never a branch in the client, in `execute_tools`, or in the API routes.
+Each engine is an **Adapter + Template Method**: the subclass declares `engine` + `query_param` and implements `normalize(raw)`; `SerpAPIEngineAdapter.search()` builds the request from those two attributes. Adding an engine means adding one class and one `ENGINE_CLASSES` entry — never a branch in the client, in the `search` node, or in the API routes.
 
 **Every engine names its query parameter differently.** Sending `q` to all of them returns HTTP 400 `Missing query ... parameter.`:
 
@@ -229,7 +229,8 @@ Each engine is an **Adapter + Template Method**: the subclass declares `engine` 
 ### Runtime conventions
 
 - `SERPAPI_API_KEY` comes from `.env`; the app still starts without it (engines just return no products).
-- The graph is a linear pipeline: `parse_query → plan_tools → execute_tools → synthesize → persist`. Every node degrades gracefully — an LLM failure falls back to heuristics, a single failing engine is isolated, and a persistence failure never breaks the response. Preserve this behavior when adding nodes.
+- The graph is a **supervisor router**: `load_history → supervisor → (route on intent) → worker → synthesize/respond/cart → persist`. The `supervisor` node detects a structured `intent` (`search`, `chit_chat`, `add_cart`, `remove_cart`, `show_cart`) and dispatches to a worker. Routing branches on the **structured `intent` field, never on free-text LLM output**. Every node degrades gracefully — an LLM failure falls back to heuristics, a single failing engine is isolated, and a persistence failure never breaks the response. Preserve this behavior when adding nodes.
+- Cart ("basket") is **user-scoped**: one active `carts` row per `user_id`, with `cart_items` line rows storing a frozen product snapshot (JSON `product` column + `quantity`). Cart add/remove resolve the target product against the user's most recent *search* run (`EngineResultsRepository.products_for_latest_run`); a missing `item_reference` auto-picks the first result.
 - `state["error"]` is set only when **zero** products were collected across all engines.
 - SQLite access is fully synchronous SQLAlchemy; sync FastAPI endpoints run in the threadpool.
 

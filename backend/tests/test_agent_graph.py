@@ -70,6 +70,7 @@ def test_graph_runs_all_nodes_and_persists(deps: AgentDeps, session_factory) -> 
 
 def test_parse_query_falls_back_to_heuristic_when_llm_is_none(deps: AgentDeps) -> None:
     out = _graph(deps).invoke({"query": "  red shoes  "})
+    assert out["intent"] == "search"
     assert out["parsed"]["keywords"] == "red shoes"
     assert out["parsed"]["engines"] == available_engines()
 
@@ -77,6 +78,7 @@ def test_parse_query_falls_back_to_heuristic_when_llm_is_none(deps: AgentDeps) -
 def test_parse_query_falls_back_when_llm_raises(engines, session_factory) -> None:
     deps = AgentDeps(engines=engines, llm_factory=lambda: BoomLLM(), session_factory=session_factory)
     out = _graph(deps).invoke({"query": "green hat"})
+    assert out["intent"] == "search"
     assert out["parsed"]["keywords"] == "green hat"
 
 
@@ -86,6 +88,7 @@ def test_parse_query_uses_llm_and_restricts_engines(engines, session_factory) ->
     deps = AgentDeps(engines=engines, llm_factory=lambda: llm, session_factory=session_factory)
 
     out = _graph(deps).invoke({"query": "cheap wireless mouse on amazon"})
+    assert out["intent"] == "search"
     assert out["parsed"]["keywords"] == "wireless mouse"
     assert out["engines"] == ["amazon"]
     assert len(out["products"]) == 1
@@ -159,3 +162,51 @@ def test_run_agent_reuses_supplied_compiled_graph(deps: AgentDeps) -> None:
     graph = build_graph(deps)
     out = run_agent("usb hub", deps=deps, graph=graph)
     assert out["answer"]
+
+
+def test_supervisor_sets_search_intent_by_default(deps: AgentDeps) -> None:
+    out = _graph(deps).invoke({"query": "usb hub"})
+    assert out["intent"] == "search"
+
+
+def test_supervisor_routes_non_search_intent(engines, session_factory) -> None:
+    """Chit-chat and intents map to their own worker; unknown falls back to search."""
+    from ecommerce_agent.agent.nodes.supervisor import route_after_supervisor
+
+    assert route_after_supervisor({"intent": "search"}) == "search"
+    assert route_after_supervisor({"intent": "chit_chat"}) == "chit_chat"
+    assert route_after_supervisor({"intent": "add_cart"}) == "cart"
+    assert route_after_supervisor({"intent": "remove_cart"}) == "cart"
+    assert route_after_supervisor({"intent": "show_cart"}) == "cart"
+    assert route_after_supervisor({}) == "search"
+
+
+def test_supervisor_selects_engines_like_old_plan_tools(engines, session_factory) -> None:
+    parsed = ParsedQuery(keywords="mouse", engines=["amazon"])
+    deps = AgentDeps(
+        engines=engines, llm_factory=lambda: StructuredLLM(parsed=parsed), session_factory=session_factory
+    )
+    out = _graph(deps).invoke({"query": "mouse"})
+    assert out["engines"] == ["amazon"]
+
+
+def test_graph_contains_supervisor_and_worker_nodes(deps: AgentDeps) -> None:
+    graph = build_graph(deps)
+    node_names = set(graph.get_graph().nodes.keys())
+    assert "supervisor" in node_names
+    assert "search" in node_names
+    assert "respond" in node_names
+    assert "load_history" in node_names
+    assert "persist" in node_names
+    # deprecated parse_query/plan_tools are gone
+    assert "parse_query" not in node_names
+    assert "plan_tools" not in node_names
+
+
+def test_chit_chat_routes_to_respond_without_search(session_factory) -> None:
+    deps = AgentDeps(engines={}, llm_factory=lambda: None, session_factory=session_factory)
+    out = _graph(deps).invoke({"query": "merhaba"})
+    assert out["intent"] == "chit_chat"
+    assert not out.get("products")  # search never ran, so no product list
+    # answer is a chat reply, not a product listing
+    assert "Hi!" in out["answer"]
