@@ -2,15 +2,17 @@
 
 Two views of the same data:
 
-* ``GET /engines/{engine}`` — what one marketplace returned for the **last chat
-  or search run**, read from the database. No query, no SerpAPI call, no LLM
-  call: this is the endpoint a frontend polls after ``POST /chat``.
+* ``GET /amazon``, ``GET /ebay``, ``GET /google_shopping``, ``GET /walmart``
+  (aliased as ``GET /engines/{engine}``) — what one marketplace returned for
+  the **last chat or search run**, read from the database. No query, no SerpAPI
+  call, no LLM call: these are the endpoints a frontend polls after
+  ``POST /chat``.
 * ``POST /engines/{engine}/search`` and ``POST /engines/search`` — ad-hoc raw
   searches that bypass the agent pipeline. Useful for debugging one
   marketplace; every call costs real SerpAPI credits.
 
-Use ``GET /runs/{run_id}/engines/{engine}`` to read an older run instead of the
-latest one.
+Use ``GET /runs/{run_id}/engines/{engine}`` (or ``GET /amazon?run_id=…``) to
+read an older run instead of the latest one.
 """
 from __future__ import annotations
 
@@ -56,20 +58,16 @@ def list_engines(service: EngineSearchService = Depends(get_engine_service)) -> 
     return EnginesOut(engines=service.available)
 
 
-@router.get("/engines/{engine}", response_model=RunEngineOut)
-def latest_engine_result(
-    engine: str,
-    run_id: int | None = Query(
-        default=None, ge=1, description="Read this run instead of the most recent one."
-    ),
-    service: EngineSearchService = Depends(get_engine_service),
-    deps: AgentDeps = Depends(get_agent_deps),
-) -> RunEngineOut:
-    """Products one marketplace returned for the last chat/search run.
+_RUN_ID_DESCRIPTION = "Read this run instead of the most recent one."
 
-    The question comes from the chat request, not from this endpoint: results are
-    read back from the database that ``POST /chat`` and ``POST /search`` write.
-    """
+
+def _read_engine_result(
+    engine: str,
+    run_id: int | None,
+    service: EngineSearchService,
+    deps: AgentDeps,
+) -> RunEngineOut:
+    """Shared implementation behind every per-engine read endpoint."""
     _require_known(service, [engine])
 
     session = deps.session_factory()
@@ -101,6 +99,50 @@ def latest_engine_result(
         )
     finally:
         session.close()
+
+
+def _engine_reader(engine: str):
+    """Build one fixed, per-marketplace GET route (``GET /amazon``, …)."""
+
+    def read_latest(
+        run_id: int | None = Query(default=None, ge=1, description=_RUN_ID_DESCRIPTION),
+        service: EngineSearchService = Depends(get_engine_service),
+        deps: AgentDeps = Depends(get_agent_deps),
+    ) -> RunEngineOut:
+        return _read_engine_result(engine, run_id, service, deps)
+
+    read_latest.__name__ = f"read_{engine}"
+    read_latest.__doc__ = (
+        f"Products the {engine} marketplace returned for the last chat/search run."
+    )
+    return read_latest
+
+
+@router.get("/engines/{engine}", response_model=RunEngineOut)
+def latest_engine_result(
+    engine: str,
+    run_id: int | None = Query(default=None, ge=1, description=_RUN_ID_DESCRIPTION),
+    service: EngineSearchService = Depends(get_engine_service),
+    deps: AgentDeps = Depends(get_agent_deps),
+) -> RunEngineOut:
+    """Products one marketplace returned for the last chat/search run.
+
+    The question comes from the chat request, not from this endpoint: results are
+    read back from the database that ``POST /chat`` and ``POST /search`` write.
+    """
+    return _read_engine_result(engine, run_id, service, deps)
+
+
+# Fixed, frontend-friendly read routes: GET /amazon, GET /ebay, …
+for _engine in ("amazon", "ebay", "google_shopping", "walmart"):
+    router.add_api_route(
+        f"/{_engine}",
+        _engine_reader(_engine),
+        methods=["GET"],
+        response_model=RunEngineOut,
+        name=f"read_{_engine}",
+        summary=f"Latest {_engine} results from the last chat/search run",
+    )
 
 
 @router.post("/engines/search", response_model=MultiEngineSearchResponse)

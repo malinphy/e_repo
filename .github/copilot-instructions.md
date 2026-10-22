@@ -125,16 +125,26 @@ Run from the repo root with the local venv (`venv\Scripts\python.exe`).
 | --- | --- | --- |
 | GET | `/health` | status, version, available engines |
 | GET | `/engines` | names accepted by the per-engine endpoints |
+| GET | `/engines/{engine}` | **free** read: what that marketplace returned for the last run (`?run_id=` to pin one) |
+| GET | `/amazon` `/ebay` `/google_shopping` `/walmart` | **flat aliases** of `/engines/{engine}` — one fixed URL per marketplace for the frontend |
 | POST | `/engines/{engine}/search` | **raw** results from one marketplace (no LLM, no persistence) |
 | POST | `/engines/search` | raw results from several engines in one call (`engines` omitted ⇒ all) |
-| POST | `/search` | full agent run (`run_id`, `engines`, `answer`, `products`) |
-| POST | `/chat` | same pipeline, chat-shaped response |
+| POST | `/search` | full agent run (`run_id`, `engines`, `answer`, `products`, `results`, `engine_errors`) |
+| POST | `/chat` | same pipeline, chat-shaped response (`run_id`, `query`, `answer`, `products`, `results`, `engine_errors`) |
 | GET | `/search/history?user_id=<id>` | recent searches for a user |
 | GET | `/runs/{run_id}` | persisted run record (`completed` / `failed`) |
 | GET | `/runs/{run_id}/engines` | per-marketplace summary of that run (counts + errors) |
 | GET | `/runs/{run_id}/engines/{engine}` | **exactly** what one marketplace returned in that run |
 
-The `/engines/*` routes are the "split" view of the backend: they expose exactly what each SerpAPI adapter
+**Two ways to read per-marketplace results — pick the cheap one.** `GET /amazon`, `/ebay`,
+`/google_shopping`, `/walmart` (and their `/engines/{engine}` aliases) plus the `/runs/{run_id}/engines*` routes
+are read-only projections of data the `persist` node already stored: no query parameter that triggers a fetch, no
+credits, no LLM. `GET /amazon` resolves the newest `engine_calls` row for that engine (or the row of an explicit
+`?run_id=`) and returns `run_id`, `query`, `result_count`, `error`, `created_at` and `products`, so a client that
+just called `POST /chat` can fan out to one fixed URL per marketplace. It answers 404 before any run exists and 404
+for an engine that never produced a row. `POST /engines/*` is the only group that *spends* SerpAPI credits.
+
+The `POST /engines/*` routes are the "split" view of the backend: they expose exactly what each SerpAPI adapter
 returns, normalized to the shared product contract and stamped with `engine`. They deliberately skip the LLM and
 skip run/history persistence, so they are the cheapest way to test a marketplace. An upstream SerpAPI failure is
 returned as HTTP 200 with the refusal in `error`/`errors` (already `redact()`ed) so a client can degrade per
@@ -157,15 +167,20 @@ Invoke-WebRequest -Uri "http://127.0.0.1:8000/health" -UseBasicParsing
 Invoke-WebRequest -Uri "http://127.0.0.1:8000/engines" -UseBasicParsing
 Invoke-WebRequest -Uri "http://127.0.0.1:8000/engines/walmart/search" -Method POST `
   -ContentType "application/json" -Body '{"query":"usb c hub","num":5}' -UseBasicParsing
-Invoke-WebRequest -Uri "http://127.0.0.1:8000/search" -Method POST -ContentType "application/json" `
-  -Body '{"query":"usb c hub","user_id":"demo"}' -UseBasicParsing
-# then, with the run_id returned above (no extra credits / LLM calls):
+# one paid call, then read every marketplace for free:
+Invoke-WebRequest -Uri "http://127.0.0.1:8000/chat" -Method POST -ContentType "application/json" `
+  -Body '{"message":"nike ayakkabi","user_id":"demo"}' -UseBasicParsing
+Invoke-WebRequest -Uri "http://127.0.0.1:8000/amazon" -UseBasicParsing
+Invoke-WebRequest -Uri "http://127.0.0.1:8000/ebay" -UseBasicParsing
+Invoke-WebRequest -Uri "http://127.0.0.1:8000/google_shopping" -UseBasicParsing
+Invoke-WebRequest -Uri "http://127.0.0.1:8000/walmart" -UseBasicParsing
+# pin an older run: /amazon?run_id=<run_id>
 Invoke-WebRequest -Uri "http://127.0.0.1:8000/runs/<run_id>/engines" -UseBasicParsing
 Invoke-WebRequest -Uri "http://127.0.0.1:8000/runs/<run_id>/engines/walmart" -UseBasicParsing
 ```
 
-`POST /search` costs real credits (1 LLM call + 1 SerpAPI call per engine) and `/engines/*` costs 1 SerpAPI call
-per engine, so prefer the pytest suite while iterating.
+`POST /chat` and `POST /search` cost real credits (1 LLM call + 1 SerpAPI call per engine) and `POST /engines/*`
+costs 1 SerpAPI call per engine, so prefer the pytest suite while iterating. Every `GET` above is database-only.
 
 ### SerpAPI adapters (learned the hard way)
 

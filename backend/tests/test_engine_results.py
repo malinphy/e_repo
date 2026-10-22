@@ -156,6 +156,29 @@ def test_chat_result_is_readable_per_engine_without_a_query(client: TestClient) 
     assert other.json()["products"] == chat["results"]["google_shopping"]
 
 
+def test_flat_engine_routes_mirror_param_route(client: TestClient) -> None:
+    chat = client.post("/chat", json={"message": "nike ayakkabi", "user_id": "u1"}).json()
+    run_id = chat["run_id"]
+
+    assert client.get("/amazon").json() == client.get("/engines/amazon").json()
+    assert client.get("/google_shopping").json() == client.get(
+        "/engines/google_shopping"
+    ).json()
+
+    amazon = client.get("/amazon").json()
+    assert amazon["run_id"] == run_id
+    assert amazon["engine"] == "amazon"
+    assert amazon["query"] == "nike ayakkabi"
+
+    pinned = client.get("/amazon", params={"run_id": run_id}).json()
+    assert pinned["run_id"] == run_id
+
+
+def test_flat_engine_route_404_for_unconfigured_engine(client: TestClient) -> None:
+    client.post("/chat", json={"message": "nike ayakkabi"})
+    assert client.get("/ebay").status_code == 404
+
+
 def test_latest_engine_result_follows_the_most_recent_chat(client: TestClient, engines) -> None:
     client.post("/chat", json={"message": "nike ayakkabi"})
     assert client.get("/engines/amazon").json()["query"] == "nike ayakkabi"
