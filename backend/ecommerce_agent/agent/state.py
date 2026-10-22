@@ -1,0 +1,18 @@
+"""Shared LangGraph state schema."""
+from __future__ import annotations
+
+from typing import Any, TypedDict
+
+
+class AgentState(TypedDict, total=False):
+    """State passed between graph nodes. All keys optional (partial updates)."""
+
+    query: str
+    user_id: str | None
+    run_id: int | None
+    parsed: dict[str, Any]
+    engines: list[str]
+    results: dict[str, list[dict[str, Any]]]
+    products: list[dict[str, Any]]
+    answer: str
+    error: str | None
