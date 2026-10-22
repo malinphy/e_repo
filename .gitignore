@@ -134,6 +134,9 @@ database/data/flights_agent.db
 *data
 *llama.cpp
 
+# Backend SQLite database (local dev)
+backend/data/
+
 *deneme.ipynb
 *utils
 *prompts
