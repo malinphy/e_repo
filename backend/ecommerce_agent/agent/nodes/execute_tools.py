@@ -1,46 +1,40 @@
 """execute_tools node: run the selected engine adapters and flatten results."""
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from ..deps import AgentDeps
 from ..state import AgentState
-from ...common.redaction import redact
+from ...services.engine_search import EngineSearchService, product_rows
 
-logger = logging.getLogger(__name__)
+RESULTS_PER_ENGINE = 10
 
 
 def make_execute_tools_node(deps: AgentDeps):
+    service = EngineSearchService(deps.engines)
+
     def execute_tools(state: AgentState) -> dict[str, Any]:
         parsed = state.get("parsed") or {}
         keywords = parsed.get("keywords") or state.get("query", "")
-        selected = state.get("engines") or list(deps.engines.keys())
+        selected = state.get("engines") or service.available
 
         results: dict[str, list[dict[str, Any]]] = {}
         products: list[dict[str, Any]] = []
-        errors: list[str] = []
+        engine_errors: dict[str, str] = {}
 
-        for name in selected:
-            adapter = deps.engines.get(name)
-            if adapter is None:
-                continue
-            try:
-                hits = adapter.search(keywords, num=10)
-            except Exception as exc:  # noqa: BLE001 - isolate per-engine failures
-                message = redact(f"{type(exc).__name__}: {exc}")
-                logger.warning("engine %s failed: %s", name, message)
-                errors.append(f"{name}: {message}")
-                hits = []
-            results[name] = hits
-            for hit in hits:
-                if "error" in hit:
-                    continue
-                products.append({**hit, "engine": name})
+        for outcome in service.search_many(keywords, selected, num=RESULTS_PER_ENGINE):
+            results[outcome.engine] = outcome.products
+            if outcome.error:
+                engine_errors[outcome.engine] = outcome.error
+            products.extend(product_rows(outcome.engine, outcome.products))
 
-        update: dict[str, Any] = {"results": results, "products": products}
-        if errors and not products:
-            update["error"] = "; ".join(errors)
+        update: dict[str, Any] = {
+            "results": results,
+            "products": products,
+            "engine_errors": engine_errors,
+        }
+        if engine_errors and not products:
+            update["error"] = "; ".join(f"{name}: {msg}" for name, msg in engine_errors.items())
         return update
 
     return execute_tools

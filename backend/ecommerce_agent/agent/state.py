@@ -14,5 +14,6 @@ class AgentState(TypedDict, total=False):
     engines: list[str]
     results: dict[str, list[dict[str, Any]]]
     products: list[dict[str, Any]]
+    engine_errors: dict[str, str]
     answer: str
     error: str | None

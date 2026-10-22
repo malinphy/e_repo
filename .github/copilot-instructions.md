@@ -91,9 +91,10 @@ backend/
     common/redaction.py        # redact() — strips secrets/URLs/tokens before logging
     common/llm/                # Strategy (LLMProvider ABC) + Factory (build_llm_provider)
     common/db/                 # Singleton engine, Base, init_db()
-    models/                    # SQLAlchemy ORM tables
+    models/                    # SQLAlchemy ORM tables (agent_runs, engine_results, search_history, …)
     repositories/              # Repository pattern (one class per model, takes a Session)
     tools/serpapi/             # Adapter (per engine) + Factory + LangChain tool wrappers
+    services/                  # EngineSearchService — Facade over the adapters (shared by graph + API)
     schemas/                   # Pydantic request/response + ParsedQuery
     agent/                     # state, deps (DI container), graph, runner, nodes/
     api/                       # routers, app factory, request/response schemas
@@ -123,10 +124,29 @@ Run from the repo root with the local venv (`venv\Scripts\python.exe`).
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/health` | status, version, available engines |
+| GET | `/engines` | names accepted by the per-engine endpoints |
+| POST | `/engines/{engine}/search` | **raw** results from one marketplace (no LLM, no persistence) |
+| POST | `/engines/search` | raw results from several engines in one call (`engines` omitted ⇒ all) |
 | POST | `/search` | full agent run (`run_id`, `engines`, `answer`, `products`) |
 | POST | `/chat` | same pipeline, chat-shaped response |
 | GET | `/search/history?user_id=<id>` | recent searches for a user |
 | GET | `/runs/{run_id}` | persisted run record (`completed` / `failed`) |
+| GET | `/runs/{run_id}/engines` | per-marketplace summary of that run (counts + errors) |
+| GET | `/runs/{run_id}/engines/{engine}` | **exactly** what one marketplace returned in that run |
+
+The `/engines/*` routes are the "split" view of the backend: they expose exactly what each SerpAPI adapter
+returns, normalized to the shared product contract and stamped with `engine`. They deliberately skip the LLM and
+skip run/history persistence, so they are the cheapest way to test a marketplace. An upstream SerpAPI failure is
+returned as HTTP 200 with the refusal in `error`/`errors` (already `redact()`ed) so a client can degrade per
+marketplace; an unknown engine name is HTTP 404. Each call still costs **one SerpAPI credit per engine**.
+
+The `/runs/{run_id}/engines*` routes are the **after-the-fact** view of a real agent run: the `persist` node writes
+one `engine_calls` row per engine (count + optional `error`) and one `engine_products` row per product, so the
+frontend can fetch "what did walmart return for run 42" without re-querying SerpAPI (no credits, no LLM). A failed
+engine still gets a row, which is why the endpoint can distinguish "no matches" from "marketplace unavailable".
+`EngineResultsRepository.replace_for_run()` deletes then re-inserts for the run, so a re-executed `persist` node
+overwrites instead of duplicating. These tables are created by `create_all`, which does **not** migrate an existing
+SQLite file — delete `backend/data/*.db` if a model column changes.
 
 ### Manual smoke test
 
@@ -134,15 +154,22 @@ With the server running:
 
 ```powershell
 Invoke-WebRequest -Uri "http://127.0.0.1:8000/health" -UseBasicParsing
+Invoke-WebRequest -Uri "http://127.0.0.1:8000/engines" -UseBasicParsing
+Invoke-WebRequest -Uri "http://127.0.0.1:8000/engines/walmart/search" -Method POST `
+  -ContentType "application/json" -Body '{"query":"usb c hub","num":5}' -UseBasicParsing
 Invoke-WebRequest -Uri "http://127.0.0.1:8000/search" -Method POST -ContentType "application/json" `
   -Body '{"query":"usb c hub","user_id":"demo"}' -UseBasicParsing
+# then, with the run_id returned above (no extra credits / LLM calls):
+Invoke-WebRequest -Uri "http://127.0.0.1:8000/runs/<run_id>/engines" -UseBasicParsing
+Invoke-WebRequest -Uri "http://127.0.0.1:8000/runs/<run_id>/engines/walmart" -UseBasicParsing
 ```
 
-`POST /search` costs real credits (1 LLM call + 1 SerpAPI call per engine), so prefer the pytest suite while iterating.
+`POST /search` costs real credits (1 LLM call + 1 SerpAPI call per engine) and `/engines/*` costs 1 SerpAPI call
+per engine, so prefer the pytest suite while iterating.
 
 ### SerpAPI adapters (learned the hard way)
 
-Each engine is an **Adapter + Template Method**: the subclass declares `engine` + `query_param` and implements `normalize(raw)`; `SerpAPIEngineAdapter.search()` builds the request from those two attributes. Adding an engine means adding one class and one `ENGINE_CLASSES` entry — never a branch in the client or in `execute_tools`.
+Each engine is an **Adapter + Template Method**: the subclass declares `engine` + `query_param` and implements `normalize(raw)`; `SerpAPIEngineAdapter.search()` builds the request from those two attributes. Adding an engine means adding one class and one `ENGINE_CLASSES` entry — never a branch in the client, in `execute_tools`, or in the API routes.
 
 **Every engine names its query parameter differently.** Sending `q` to all of them returns HTTP 400 `Missing query ... parameter.`:
 
