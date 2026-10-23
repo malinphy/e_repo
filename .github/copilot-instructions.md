@@ -129,9 +129,13 @@ Run from the repo root with the local venv (`venv\Scripts\python.exe`).
 | GET | `/amazon` `/ebay` `/google_shopping` `/walmart` | **flat aliases** of `/engines/{engine}` — one fixed URL per marketplace for the frontend |
 | POST | `/engines/{engine}/search` | **raw** results from one marketplace (no LLM, no persistence) |
 | POST | `/engines/search` | raw results from several engines in one call (`engines` omitted ⇒ all) |
-| POST | `/search` | full agent run (`run_id`, `engines`, `answer`, `products`, `results`, `engine_errors`) |
-| POST | `/chat` | same pipeline, chat-shaped response (`run_id`, `query`, `answer`, `products`, `results`, `engine_errors`) |
+| POST | `/search` | full agent run (`run_id`, `engines`, `answer`, `products`, `results`, `engine_errors`); optional body `thread_id` |
+| POST | `/chat` | same pipeline, chat-shaped response (`run_id`, `query`, `answer`, `products`, `results`, `engine_errors`); optional body `thread_id` continues a thread and loads its history — with no `thread_id` but a `user_id`, a new thread is auto-created |
 | GET | `/search/history?user_id=<id>` | recent searches for a user |
+| POST | `/users/{user_id}/threads` | create a new chat thread for a user |
+| GET | `/users/{user_id}/threads` | list recent chat threads for a user |
+| POST | `/chat/{thread_id}/message` | send a message in a thread; runs the agent with conversation context |
+| GET | `/chat/{thread_id}/history` | all messages in a thread, oldest first |
 | GET | `/runs/{run_id}` | persisted run record (`completed` / `failed`) |
 | GET | `/runs/{run_id}/engines` | per-marketplace summary of that run (counts + errors) |
 | GET | `/runs/{run_id}/engines/{engine}` | **exactly** what one marketplace returned in that run |
@@ -177,6 +181,15 @@ Invoke-WebRequest -Uri "http://127.0.0.1:8000/walmart" -UseBasicParsing
 # pin an older run: /amazon?run_id=<run_id>
 Invoke-WebRequest -Uri "http://127.0.0.1:8000/runs/<run_id>/engines" -UseBasicParsing
 Invoke-WebRequest -Uri "http://127.0.0.1:8000/runs/<run_id>/engines/walmart" -UseBasicParsing
+
+# chat threads: /chat auto-creates a thread when given user_id without thread_id
+Invoke-WebRequest -Uri "http://127.0.0.1:8000/chat" -Method POST -ContentType "application/json" `
+  -Body '{"message":"nike ayakkabi","user_id":"demo"}' -UseBasicParsing
+# the response carries thread_id; keep it and pass it back to continue the conversation:
+Invoke-WebRequest -Uri "http://127.0.0.1:8000/chat" -Method POST -ContentType "application/json" `
+  -Body '{"message":"adidas ayakkabi","user_id":"demo","thread_id":1}' -UseBasicParsing
+Invoke-WebRequest -Uri "http://127.0.0.1:8000/chat/1/history" -UseBasicParsing
+Invoke-WebRequest -Uri "http://127.0.0.1:8000/users/demo/threads" -UseBasicParsing
 ```
 
 `POST /chat` and `POST /search` cost real credits (1 LLM call + 1 SerpAPI call per engine) and `POST /engines/*`
@@ -184,7 +197,7 @@ costs 1 SerpAPI call per engine, so prefer the pytest suite while iterating. Eve
 
 ### SerpAPI adapters (learned the hard way)
 
-Each engine is an **Adapter + Template Method**: the subclass declares `engine` + `query_param` and implements `normalize(raw)`; `SerpAPIEngineAdapter.search()` builds the request from those two attributes. Adding an engine means adding one class and one `ENGINE_CLASSES` entry — never a branch in the client, in `execute_tools`, or in the API routes.
+Each engine is an **Adapter + Template Method**: the subclass declares `engine` + `query_param` and implements `normalize(raw)`; `SerpAPIEngineAdapter.search()` builds the request from those two attributes. Adding an engine means adding one class and one `ENGINE_CLASSES` entry — never a branch in the client, in the `search` node, or in the API routes.
 
 **Every engine names its query parameter differently.** Sending `q` to all of them returns HTTP 400 `Missing query ... parameter.`:
 
@@ -206,6 +219,12 @@ Each engine is an **Adapter + Template Method**: the subclass declares `engine` 
 - Only `mask_secret()` (`***e56a`) may appear in logs. If a new secret is added to `Settings`, add it to `redaction._configured_secrets()` too.
 - A provider key that leaks once is compromised: tell the user to rotate it.
 
+### LangSmith tracing
+
+- Tracing is **opt-in**: it activates only when `LANGSMITH_API_KEY` is set **and** `LANGSMITH_TRACING=true` in `.env`. `LANGSMITH_PROJECT` names the project (default `ecommerce-agent`).
+- `api/app.py::_configure_langsmith()` enables it at startup via `langsmith.configure(enabled=True, project_name=...)`; the API key is read from the `LANGSMITH_API_KEY` env var (already loaded from `.env`). A tracing failure logs a warning and never blocks startup.
+- `langsmith` is pinned in `requirements.txt` (currently `0.7.22`). `langsmith.configure()` does **not** accept an `api_key` kwarg — set the env var instead.
+
 ### Testing conventions
 
 - Inject `AgentDeps(engines=..., llm_factory=..., session_factory=...)` — never build real SerpAPI clients or real LLMs in tests.
@@ -216,7 +235,8 @@ Each engine is an **Adapter + Template Method**: the subclass declares `engine` 
 ### Runtime conventions
 
 - `SERPAPI_API_KEY` comes from `.env`; the app still starts without it (engines just return no products).
-- The graph is a linear pipeline: `parse_query → plan_tools → execute_tools → synthesize → persist`. Every node degrades gracefully — an LLM failure falls back to heuristics, a single failing engine is isolated, and a persistence failure never breaks the response. Preserve this behavior when adding nodes.
+- The graph is a **supervisor router**: `load_history → supervisor → (route on intent) → worker → synthesize/respond/cart → persist`. The `supervisor` node detects a structured `intent` (`search`, `chit_chat`, `add_cart`, `remove_cart`, `show_cart`) and dispatches to a worker. Routing branches on the **structured `intent` field, never on free-text LLM output**. Every node degrades gracefully — an LLM failure falls back to heuristics, a single failing engine is isolated, and a persistence failure never breaks the response. Preserve this behavior when adding nodes.
+- Cart ("basket") is **user-scoped**: one active `carts` row per `user_id`, with `cart_items` line rows storing a frozen product snapshot (JSON `product` column + `quantity`). Cart add/remove resolve the target product against the user's most recent *search* run (`EngineResultsRepository.products_for_latest_run`); a missing `item_reference` auto-picks the first result.
 - `state["error"]` is set only when **zero** products were collected across all engines.
 - SQLite access is fully synchronous SQLAlchemy; sync FastAPI endpoints run in the threadpool.
 

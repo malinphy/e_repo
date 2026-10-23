@@ -9,7 +9,10 @@ class AgentState(TypedDict, total=False):
 
     query: str
     user_id: str | None
+    thread_id: int | None
     run_id: int | None
+    message_history: list[dict[str, str]]
+    intent: str
     parsed: dict[str, Any]
     engines: list[str]
     results: dict[str, list[dict[str, Any]]]

@@ -10,9 +10,13 @@ def init_db() -> None:
     # Import models so they are registered with Base.metadata before create_all.
     from ...models import (  # noqa: F401
         agent_runs,
-        engine_results,
-        search_history,
-        user_preferences,
-    )
+            cart,
+            chat_messages,
+            chat_threads,
+            engine_results,
+            search_history,
+            user_preferences,
+            users,
+        )
 
     Base.metadata.create_all(bind=get_engine())
