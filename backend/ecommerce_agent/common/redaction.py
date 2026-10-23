@@ -21,7 +21,8 @@ def _configured_secrets() -> tuple[str, ...]:
     values = (
         getattr(settings, "serpapi_api_key", "") or "",
         getattr(settings, "openai_api_key", "") or "",
-    )
+            getattr(settings, "langsmith_api_key", "") or "",
+        )
     # Longest first so a secret containing another one is masked wholly.
     # Short values would mask unrelated words, so ignore them.
     return tuple(

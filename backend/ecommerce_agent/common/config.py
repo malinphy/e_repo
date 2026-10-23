@@ -78,6 +78,11 @@ class Settings(BaseSettings):
     # SerpAPI
     serpapi_api_key: str = ""
 
+    # LangSmith tracing
+    langsmith_api_key: str = ""
+    langsmith_tracing: bool = False
+    langsmith_project: str = "ecommerce-agent"
+
     # SQLite
     sqlite_path: str = str(REPO_ROOT / "backend" / "data" / "ecommerce_agent.db")
 

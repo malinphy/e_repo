@@ -219,6 +219,12 @@ Each engine is an **Adapter + Template Method**: the subclass declares `engine` 
 - Only `mask_secret()` (`***e56a`) may appear in logs. If a new secret is added to `Settings`, add it to `redaction._configured_secrets()` too.
 - A provider key that leaks once is compromised: tell the user to rotate it.
 
+### LangSmith tracing
+
+- Tracing is **opt-in**: it activates only when `LANGSMITH_API_KEY` is set **and** `LANGSMITH_TRACING=true` in `.env`. `LANGSMITH_PROJECT` names the project (default `ecommerce-agent`).
+- `api/app.py::_configure_langsmith()` enables it at startup via `langsmith.configure(enabled=True, project_name=...)`; the API key is read from the `LANGSMITH_API_KEY` env var (already loaded from `.env`). A tracing failure logs a warning and never blocks startup.
+- `langsmith` is pinned in `requirements.txt` (currently `0.7.22`). `langsmith.configure()` does **not** accept an `api_key` kwarg — set the env var instead.
+
 ### Testing conventions
 
 - Inject `AgentDeps(engines=..., llm_factory=..., session_factory=...)` — never build real SerpAPI clients or real LLMs in tests.
