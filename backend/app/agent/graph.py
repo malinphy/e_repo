@@ -7,6 +7,8 @@ from langchain_core.messages import AIMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
+from sqlalchemy import select
+
 from ..core.database import SessionLocal
 from ..models.chat import ChatMessage
 from .nodes.chitchat import chitchat_node
@@ -14,6 +16,7 @@ from .nodes.load_context import load_context_node
 from .nodes.router import router_node
 from .state import ShopState
 from .subgraphs.cart.graph import build_cart_subgraph
+from .subgraphs.checkout.checkout_node import checkout_node
 from .subgraphs.qa.graph import build_qa_subgraph
 from .subgraphs.search.graph import build_search_subgraph
 
@@ -26,20 +29,6 @@ def route_after_router(state: ShopState) -> Literal["search", "cart", "qa", "chi
     if intent in ("search", "cart", "qa", "chitchat", "checkout"):
         return intent
     return "search"
-
-
-def placeholder_checkout_node(state: ShopState) -> Dict[str, Any]:
-    """Temporary placeholder for Stage 5 checkout HITL."""
-    cart_items = state.get("cart") or []
-    if not cart_items:
-        msg = "Sepetiniz boş olduğu için ödeme adımına geçilemiyor. Önce lütfen bir ürün ekleyin."
-    else:
-        total = sum((i.get("price") or 0.0) * (i.get("quantity") or 1) for i in cart_items)
-        msg = (
-            f"💳 **Sipariş & Ödeme Onayı**: Sepetinizde {len(cart_items)} kalem ürün var "
-            f"(Toplam: ${total:.2f}). Bu adım Aşama 5'te human-in-the-loop onayıyla siparişe dönüştürülecektir."
-        )
-    return {"messages": [AIMessage(content=msg)]}
 
 
 def persist_turn_node(state: ShopState) -> Dict[str, Any]:
@@ -106,7 +95,7 @@ def build_shop_graph(checkpointer: Any | None = None):
     workflow.add_node("cart", build_cart_subgraph())
     workflow.add_node("qa", build_qa_subgraph())
     workflow.add_node("chitchat", chitchat_node)
-    workflow.add_node("checkout", placeholder_checkout_node)
+    workflow.add_node("checkout", checkout_node)
     workflow.add_node("persist_turn", persist_turn_node)
 
     # 2. Add Edges

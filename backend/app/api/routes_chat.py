@@ -6,13 +6,15 @@ import uuid
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Query
 from langchain_core.messages import AIMessage, HumanMessage
+from langgraph.types import Command
 from pydantic import BaseModel
 from sqlalchemy import delete, select
 
 from ..agent.graph import build_shop_graph
 from ..core.database import SessionLocal
 from ..models.chat import ChatMessage, ChatThread
-from ..schemas.api import ChatRequest, ChatResponse
+from ..models.user import User
+from ..schemas.api import ChatRequest, ChatResponse, CheckoutResumeRequest
 from ..schemas.product import Product
 
 logger = logging.getLogger(__name__)
@@ -56,6 +58,13 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
 
     db = SessionLocal()
     try:
+        # 0. Ensure user exists in DB
+        user = db.scalar(select(User).where(User.id == user_id))
+        if not user:
+            user = User(id=user_id, name="Guest User")
+            db.add(user)
+            db.flush()
+
         # 1. Thread entity handling in DB
         thread = db.scalar(select(ChatThread).where(ChatThread.thread_id == thread_id))
         if not thread:
@@ -95,15 +104,61 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
         "chat_id": chat_id,
     }
 
+    # Check if thread has an active interrupt awaiting human approval
+    current_state_check = _agent_graph.get_state(config)
+    has_active_interrupt = bool(
+        current_state_check
+        and current_state_check.tasks
+        and any(task.interrupts for task in current_state_check.tasks)
+    )
+
+    pending_action = None
     try:
-        result = await _agent_graph.ainvoke(state_input, config=config)
+        if has_active_interrupt:
+            lowered = request.message.strip().lower()
+            if any(w in lowered for w in ("evet", "onay", "tamam", "yes", "al", "öde", "ode", "satın al")):
+                result = await _agent_graph.ainvoke(Command(resume={"approved": True}), config=config)
+            elif any(w in lowered for w in ("hayır", "hayir", "iptal", "vazgeç", "vazgec", "no", "cancel")):
+                result = await _agent_graph.ainvoke(Command(resume={"approved": False}), config=config)
+            else:
+                # Cancel pending checkout and continue with new query
+                await _agent_graph.ainvoke(Command(resume={"approved": False}), config=config)
+                result = await _agent_graph.ainvoke(state_input, config=config)
+        else:
+            result = await _agent_graph.ainvoke(state_input, config=config)
     except Exception as exc:
         logger.exception("Error executing chat graph: %s", exc)
         raise HTTPException(status_code=500, detail=f"Agent graph execution failed: {exc}")
 
-    # Extract assistant reply from messages
-    messages = result.get("messages") or []
-    reply_text = messages[-1].content if messages else "Yanıt üretilemedi."
+    # Check if execution paused on a new LangGraph interrupt (HITL)
+    if result.get("__interrupt__"):
+        interrupt_info = result["__interrupt__"][0].value
+        pending_action = interrupt_info
+        reply_text = interrupt_info.get("summary_message") or interrupt_info.get("prompt") or "İşleminiz için onay bekleniyor."
+
+        # Persist the interrupt prompt to chat_messages
+        db = SessionLocal()
+        try:
+            db.add(ChatMessage(thread_id=thread_id, role="user", content=str(request.message), intent="checkout"))
+            db.add(
+                ChatMessage(
+                    thread_id=thread_id,
+                    role="assistant",
+                    content=str(reply_text),
+                    intent="checkout",
+                    metadata_json={"pending_action": pending_action},
+                )
+            )
+            db.commit()
+        except Exception as exc:
+            db.rollback()
+            logger.warning("Failed to persist interrupted chat message: %s", exc)
+        finally:
+            db.close()
+    else:
+        # Extract assistant reply from messages
+        messages = result.get("messages") or []
+        reply_text = messages[-1].content if messages else "Yanıt üretilemedi."
 
     # Parse last_results into validated Product objects
     raw_products = result.get("last_results") or []
@@ -116,13 +171,74 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
 
     return ChatResponse(
         reply=str(reply_text),
-        intent=result.get("intent") or "unknown",
+        intent=result.get("intent") or "checkout" if pending_action else (result.get("intent") or "unknown"),
         user_id=user_id,
         thread_id=thread_id,
         chat_id=chat_id,
         products=validated_products,
         cart=result.get("cart") or [],
+        pending_action=pending_action,
     )
+
+
+@router.post("/resume", response_model=ChatResponse, summary="Resume checkout approval via button click (Human-in-the-Loop)")
+async def resume_checkout_endpoint(request: CheckoutResumeRequest) -> ChatResponse:
+    """Resumes an interrupted LangGraph checkout workflow when the user clicks an action button.
+
+    - Triggered when the user clicks [Siparişi Onayla] (approved=True) or [İptal Et] (approved=False).
+    - Uses LangGraph Command(resume={'approved': bool}) to resume execution.
+    - Upon approval: creates Order and OrderItems in SQLite, purges user's Cart, and returns confirmation.
+    - Upon cancel: returns cancellation notice and preserves cart items.
+    """
+    config = {"configurable": {"thread_id": request.thread_id}}
+    chat_id = f"chat_{uuid.uuid4().hex[:8]}"
+    user_id = request.user_id or "guest_user"
+
+    # Verify that an active interrupt is waiting on this thread
+    current_state = _agent_graph.get_state(config)
+    has_interrupt = bool(
+        current_state
+        and current_state.tasks
+        and any(task.interrupts for task in current_state.tasks)
+    )
+
+    if not has_interrupt:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Thread '{request.thread_id}' üzerinde onay bekleyen aktif bir işlem (interrupt) bulunamadı."
+        )
+
+    try:
+        result = await _agent_graph.ainvoke(
+            Command(resume={"approved": request.approved}),
+            config=config,
+        )
+    except Exception as exc:
+        logger.exception("Error resuming checkout graph: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Checkout resume failed: {exc}")
+
+    messages = result.get("messages") or []
+    reply_text = messages[-1].content if messages else "İşlem tamamlandı."
+
+    raw_products = result.get("last_results") or []
+    validated_products: list[Product] = []
+    for item in raw_products:
+        try:
+            validated_products.append(Product.model_validate(item))
+        except Exception:
+            pass
+
+    return ChatResponse(
+        reply=str(reply_text),
+        intent="checkout",
+        user_id=user_id,
+        thread_id=request.thread_id,
+        chat_id=chat_id,
+        products=validated_products,
+        cart=result.get("cart") or [],
+        pending_action=None,
+    )
+
 
 
 class CreateThreadRequest(BaseModel):
@@ -139,6 +255,12 @@ async def create_new_thread(req: Optional[CreateThreadRequest] = None):
 
     db = SessionLocal()
     try:
+        user = db.scalar(select(User).where(User.id == user_id))
+        if not user:
+            user = User(id=user_id, name="Guest User")
+            db.add(user)
+            db.flush()
+
         thread = ChatThread(thread_id=thread_id, user_id=user_id, title=title)
         db.add(thread)
         db.commit()

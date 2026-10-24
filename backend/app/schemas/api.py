@@ -9,7 +9,7 @@ from .product import Product
 class ChatRequest(BaseModel):
     """Payload for POST /api/chat."""
 
-    message: str = Field(..., description="User message text", example="100 dolar altı bluetooth kulaklık ara")
+    message: str = Field(..., description="User message text", json_schema_extra={"example": "100 dolar altı bluetooth kulaklık ara"})
     user_id: Optional[str] = Field(default="guest_user", description="Active user ID")
     thread_id: Optional[str] = Field(default=None, description="Optional thread/session ID for conversational memory")
 
@@ -24,7 +24,15 @@ class ChatResponse(BaseModel):
     chat_id: str = Field(description="Specific turn ID")
     products: List[Product] = Field(default_factory=list, description="Structured product results returned from search subgraph")
     cart: List[Dict[str, Any]] = Field(default_factory=list, description="Current user cart snapshot")
+    pending_action: Optional[Dict[str, Any]] = Field(default=None, description="Action awaiting user approval (e.g. checkout confirmation)")
 
+
+class CheckoutResumeRequest(BaseModel):
+    """Payload for POST /api/chat/resume to approve or reject an interrupted checkout."""
+
+    thread_id: str = Field(..., description="Active thread ID waiting for approval")
+    user_id: Optional[str] = Field(default="guest_user", description="Active user ID")
+    approved: bool = Field(default=True, description="True to complete purchase, False to cancel")
 
 class SearchResultsResponse(BaseModel):
     """Response from GET /api/search returning products discovered in the chat session."""
