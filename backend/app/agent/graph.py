@@ -13,37 +13,37 @@ from .nodes.chitchat import chitchat_node
 from .nodes.load_context import load_context_node
 from .nodes.router import router_node
 from .state import ShopState
+from .subgraphs.cart.graph import build_cart_subgraph
+from .subgraphs.qa.graph import build_qa_subgraph
 from .subgraphs.search.graph import build_search_subgraph
 
 logger = logging.getLogger(__name__)
 
 
-def route_after_router(state: ShopState) -> Literal["search", "chitchat", "placeholder_stage4"]:
+def route_after_router(state: ShopState) -> Literal["search", "cart", "qa", "chitchat", "checkout"]:
     """Conditional routing based on structured intent."""
     intent = state.get("intent") or "search"
-    if intent == "search":
-        return "search"
-    if intent == "chitchat":
-        return "chitchat"
-    return "placeholder_stage4"
+    if intent in ("search", "cart", "qa", "chitchat", "checkout"):
+        return intent
+    return "search"
 
 
-def placeholder_stage4_node(state: ShopState) -> Dict[str, Any]:
-    """Temporary placeholder for Stage 4 modules (Cart & QA)."""
-    intent = state.get("intent")
-    if intent == "cart":
-        msg = "🛒 **Sepet Yönetimi**: Aşama 4'te bağlanacaktır. (Ürün ekleme, çıkarma ve sepet görüntüleme)."
-    elif intent == "qa":
-        msg = "🔍 **Ürün Detay Soru-Cevap**: Aşama 4'te bağlanacaktır. (Ürün garantisi, özellikleri ve detayları)."
-    elif intent == "checkout":
-        msg = "💳 **Sipariş / Ödeme**: Aşama 5'te Human-in-the-loop onayı ile bağlanacaktır."
+def placeholder_checkout_node(state: ShopState) -> Dict[str, Any]:
+    """Temporary placeholder for Stage 5 checkout HITL."""
+    cart_items = state.get("cart") or []
+    if not cart_items:
+        msg = "Sepetiniz boş olduğu için ödeme adımına geçilemiyor. Önce lütfen bir ürün ekleyin."
     else:
-        msg = "Talebiniz alındı."
+        total = sum((i.get("price") or 0.0) * (i.get("quantity") or 1) for i in cart_items)
+        msg = (
+            f"💳 **Sipariş & Ödeme Onayı**: Sepetinizde {len(cart_items)} kalem ürün var "
+            f"(Toplam: ${total:.2f}). Bu adım Aşama 5'te human-in-the-loop onayıyla siparişe dönüştürülecektir."
+        )
     return {"messages": [AIMessage(content=msg)]}
 
 
 def persist_turn_node(state: ShopState) -> Dict[str, Any]:
-    """Saves user message and final assistant reply into SQLite chat_messages table."""
+    """Saves user message, assistant reply, and structured products into SQLite."""
     thread_id = state.get("thread_id")
     messages = state.get("messages") or []
     intent = state.get("intent")
@@ -54,12 +54,37 @@ def persist_turn_node(state: ShopState) -> Dict[str, Any]:
     user_msg = messages[-2].content if len(messages) >= 2 else ""
     assistant_msg = messages[-1].content
 
+    # Prepare structured metadata (store last_results and search_query)
+    metadata: Dict[str, Any] = {}
+    if state.get("last_results"):
+        metadata["products"] = state.get("last_results")
+    if state.get("search_query"):
+        metadata["search_query"] = state.get("search_query")
+
     db = SessionLocal()
     try:
-        # Save user message
+        from datetime import datetime
+        from ..models.chat import ChatThread
+
+        # 1. Update thread updated_at and refine title if default
+        thread = db.scalar(select(ChatThread).where(ChatThread.thread_id == thread_id))
+        if thread:
+            thread.updated_at = datetime.utcnow()
+            if not thread.title or thread.title in ("Alışveriş Sohbeti", "Sohbet", "Yeni Sohbet"):
+                thread.title = str(user_msg)[:50].strip()
+
+        # 2. Save user message
         db.add(ChatMessage(thread_id=thread_id, role="user", content=str(user_msg), intent=intent))
-        # Save assistant message
-        db.add(ChatMessage(thread_id=thread_id, role="assistant", content=str(assistant_msg), intent=intent))
+        # 3. Save assistant message with structured products metadata
+        db.add(
+            ChatMessage(
+                thread_id=thread_id,
+                role="assistant",
+                content=str(assistant_msg),
+                intent=intent,
+                metadata_json=metadata if metadata else None,
+            )
+        )
         db.commit()
     except Exception as exc:
         db.rollback()
@@ -74,12 +99,14 @@ def build_shop_graph(checkpointer: Any | None = None):
     """Build and compile the main E-Commerce Shop Graph."""
     workflow = StateGraph(ShopState)
 
-    # 1. Register Nodes
+    # 1. Register Nodes & Subgraphs
     workflow.add_node("load_context", load_context_node)
     workflow.add_node("router", router_node)
     workflow.add_node("search", build_search_subgraph())
+    workflow.add_node("cart", build_cart_subgraph())
+    workflow.add_node("qa", build_qa_subgraph())
     workflow.add_node("chitchat", chitchat_node)
-    workflow.add_node("placeholder_stage4", placeholder_stage4_node)
+    workflow.add_node("checkout", placeholder_checkout_node)
     workflow.add_node("persist_turn", persist_turn_node)
 
     # 2. Add Edges
@@ -91,14 +118,18 @@ def build_shop_graph(checkpointer: Any | None = None):
         route_after_router,
         {
             "search": "search",
+            "cart": "cart",
+            "qa": "qa",
             "chitchat": "chitchat",
-            "placeholder_stage4": "placeholder_stage4",
+            "checkout": "checkout",
         },
     )
 
     workflow.add_edge("search", "persist_turn")
+    workflow.add_edge("cart", "persist_turn")
+    workflow.add_edge("qa", "persist_turn")
     workflow.add_edge("chitchat", "persist_turn")
-    workflow.add_edge("placeholder_stage4", "persist_turn")
+    workflow.add_edge("checkout", "persist_turn")
     workflow.add_edge("persist_turn", END)
 
     memory = checkpointer or MemorySaver()

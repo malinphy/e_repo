@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from ...core.database import SessionLocal
 from ...models.cart import Cart
-from ...models.chat import ChatThread
+from ...models.chat import ChatMessage, ChatThread
 from ...models.user import User
 from ..state import ShopState
 
@@ -71,8 +71,20 @@ def load_context_node(state: ShopState) -> Dict[str, Any]:
             for item in (cart.items or [])
         ]
 
-        # 4. Maintain last_results if already present in state
+        # 4. Maintain or restore last_results from recent DB messages if missing in state
         last_results = state.get("last_results") or []
+        if not last_results:
+            last_msg_with_products = db.scalar(
+                select(ChatMessage)
+                .where(
+                    ChatMessage.thread_id == thread_id,
+                    ChatMessage.role == "assistant",
+                    ChatMessage.metadata_json.isnot(None),
+                )
+                .order_by(ChatMessage.created_at.desc())
+            )
+            if last_msg_with_products and last_msg_with_products.metadata_json:
+                last_results = last_msg_with_products.metadata_json.get("products") or []
 
         return {
             "user_id": user_id,
