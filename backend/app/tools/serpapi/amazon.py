@@ -34,7 +34,14 @@ class AmazonAdapter(BaseEngineAdapter):
 
             url = item.get("link") or f"https://www.amazon.com/dp/{asin}"
             image = item.get("thumbnail")
-            snippet = item.get("snippet") or item.get("delivery")
+
+            raw_snippet = item.get("snippet") or item.get("delivery")
+            if isinstance(raw_snippet, list):
+                snippet = " ".join(str(s) for s in raw_snippet)
+            elif raw_snippet is not None:
+                snippet = str(raw_snippet)
+            else:
+                snippet = None
 
             products.append(
                 Product(
