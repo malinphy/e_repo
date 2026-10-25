@@ -23,7 +23,7 @@ Product Details:
 - Product URL: {url}
 
 Rules:
-1. Answer the user's question directly, clearly, and concisely in the user's language (Turkish or English).
+1. Always state the product title ({title}) at the beginning of your response (e.g., "**{title}** için: ...") and answer the user's question directly, clearly, and concisely in the user's language (Turkish or English).
 2. ONLY use the verified facts from the product details above.
 3. DO NOT invent, hallucinate, or assume features (e.g. warranty duration, battery life, waterproof rating) if not explicitly mentioned in the snippet.
 4. If the requested information is not in the snippet, clearly state:
@@ -85,6 +85,8 @@ def qa_node(state: ShopState) -> Dict[str, Any]:
 
             response = llm.invoke(prompt)
             reply = response.content if hasattr(response, "content") else str(response)
+            if title.lower() not in reply.lower():
+                reply = f"📌 **{title}**:\n{reply}"
         except Exception as exc:
             logger.warning("LLM QA answer failed, using fallback: %s", exc)
             reply = (

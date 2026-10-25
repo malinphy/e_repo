@@ -159,22 +159,38 @@ def remove_item_from_cart(
                 db.commit()
                 return True, "Sepetinizdeki tüm ürünler temizlendi.", []
 
-            # Check index match
-            match = _NUMBER_RE.search(lowered)
-            if match:
-                idx = int(match.group(1)) - 1
-                if 0 <= idx < len(items):
-                    target_item = items[idx]
+            # 1. Match direct item_id (primary key) or product_id (exact)
+            for it in items:
+                if str(it.id) == lowered or it.product_id.lower() == lowered:
+                    target_item = it
+                    break
 
-            # Check title match
+            # 2. Match title keywords / substring
             if not target_item:
                 for it in items:
-                    if lowered in it.title.lower() or it.product_id.lower() == lowered:
+                    if lowered in it.title.lower():
                         target_item = it
                         break
 
-        # If still not found, remove the most recent item
-        if not target_item and items:
+            # 3. Check ordinal match (ilk, ikinci, 1st, 2nd...)
+            if not target_item:
+                for word, pos in _ORDINAL_MAP.items():
+                    if word in lowered:
+                        idx = pos - 1
+                        if 0 <= idx < len(items):
+                            target_item = items[idx]
+                            break
+
+            # 4. Check position index if referring to an ordinal/item index (e.g. "1. ürün", "2. ürün" or standalone digit)
+            if not target_item:
+                match = _NUMBER_RE.search(lowered)
+                if match:
+                    idx = int(match.group(1)) - 1
+                    if 0 <= idx < len(items):
+                        target_item = items[idx]
+
+        # If user did not provide an item reference, remove the most recent item
+        elif items:
             target_item = items[-1]
 
         if target_item:

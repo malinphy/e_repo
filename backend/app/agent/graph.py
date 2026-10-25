@@ -7,6 +7,8 @@ from langchain_core.messages import AIMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
+from sqlalchemy import select
+
 from ..core.database import SessionLocal
 from ..models.chat import ChatMessage
 from .nodes.chitchat import chitchat_node
@@ -14,6 +16,7 @@ from .nodes.load_context import load_context_node
 from .nodes.router import router_node
 from .state import ShopState
 from .subgraphs.cart.graph import build_cart_subgraph
+from .subgraphs.checkout.checkout_node import checkout_node
 from .subgraphs.qa.graph import build_qa_subgraph
 from .subgraphs.search.graph import build_search_subgraph
 
@@ -28,20 +31,6 @@ def route_after_router(state: ShopState) -> Literal["search", "cart", "qa", "chi
     return "search"
 
 
-def placeholder_checkout_node(state: ShopState) -> Dict[str, Any]:
-    """Temporary placeholder for Stage 5 checkout HITL."""
-    cart_items = state.get("cart") or []
-    if not cart_items:
-        msg = "Sepetiniz boş olduğu için ödeme adımına geçilemiyor. Önce lütfen bir ürün ekleyin."
-    else:
-        total = sum((i.get("price") or 0.0) * (i.get("quantity") or 1) for i in cart_items)
-        msg = (
-            f"💳 **Sipariş & Ödeme Onayı**: Sepetinizde {len(cart_items)} kalem ürün var "
-            f"(Toplam: ${total:.2f}). Bu adım Aşama 5'te human-in-the-loop onayıyla siparişe dönüştürülecektir."
-        )
-    return {"messages": [AIMessage(content=msg)]}
-
-
 def persist_turn_node(state: ShopState) -> Dict[str, Any]:
     """Saves user message, assistant reply, and structured products into SQLite."""
     thread_id = state.get("thread_id")
@@ -54,22 +43,23 @@ def persist_turn_node(state: ShopState) -> Dict[str, Any]:
     user_msg = messages[-2].content if len(messages) >= 2 else ""
     assistant_msg = messages[-1].content
 
-    # Prepare structured metadata (store last_results and search_query)
+    # Prepare structured metadata (store last_results and search_query only on search turns)
     metadata: Dict[str, Any] = {}
-    if state.get("last_results"):
-        metadata["products"] = state.get("last_results")
-    if state.get("search_query"):
-        metadata["search_query"] = state.get("search_query")
+    if intent == "search":
+        if state.get("last_results"):
+            metadata["products"] = state.get("last_results")
+        if state.get("search_query"):
+            metadata["search_query"] = state.get("search_query")
 
     db = SessionLocal()
     try:
-        from datetime import datetime
+        from datetime import datetime, timezone
         from ..models.chat import ChatThread
 
         # 1. Update thread updated_at and refine title if default
         thread = db.scalar(select(ChatThread).where(ChatThread.thread_id == thread_id))
         if thread:
-            thread.updated_at = datetime.utcnow()
+            thread.updated_at = datetime.now(timezone.utc)
             if not thread.title or thread.title in ("Alışveriş Sohbeti", "Sohbet", "Yeni Sohbet"):
                 thread.title = str(user_msg)[:50].strip()
 
@@ -106,7 +96,7 @@ def build_shop_graph(checkpointer: Any | None = None):
     workflow.add_node("cart", build_cart_subgraph())
     workflow.add_node("qa", build_qa_subgraph())
     workflow.add_node("chitchat", chitchat_node)
-    workflow.add_node("checkout", placeholder_checkout_node)
+    workflow.add_node("checkout", checkout_node)
     workflow.add_node("persist_turn", persist_turn_node)
 
     # 2. Add Edges

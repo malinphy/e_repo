@@ -1,7 +1,7 @@
 """Tests for SQLite database models and persistence."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy import select
 
@@ -67,14 +67,14 @@ def test_product_cache_ttl(db_session):
         query="running shoes",
         engine="walmart",
         results_json=[{"title": "Shoe A"}],
-        expires_at=datetime.utcnow() - timedelta(hours=1),
+        expires_at=datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=1),
     )
     valid_cache = ProductCache(
         query_hash="hash_new",
         query="wireless mouse",
         engine="ebay",
         results_json=[{"title": "Mouse B"}],
-        expires_at=datetime.utcnow() + timedelta(hours=24),
+        expires_at=datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=24),
     )
     db_session.add_all([expired_cache, valid_cache])
     db_session.flush()
