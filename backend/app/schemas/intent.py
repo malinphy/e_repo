@@ -28,7 +28,7 @@ class CartIntentDetails(BaseModel):
     action: CartAction = Field(description="Action to perform: add, remove, update_qty, or view")
     item_reference: Optional[str] = Field(
         default=None,
-        description="Reference to product from last_results (e.g. '2nd', 'ilk urun', 'en ucuzu', 'nike')",
+        description="Reference to product from last_results (e.g. '2nd', 'first product', 'cheapest', 'nike')",
     )
     quantity: int = Field(default=1, description="Quantity to add, remove, or set")
 
@@ -52,7 +52,7 @@ class RouterOutput(BaseModel):
     )
     qa_target_reference: Optional[str] = Field(
         default=None,
-        description="Target product reference when intent is 'qa' (e.g. '2. urun', 'garanti')",
+        description="Target product reference when intent is 'qa' (e.g. '2nd product', 'warranty')",
     )
     reasoning: Optional[str] = Field(
         default=None,

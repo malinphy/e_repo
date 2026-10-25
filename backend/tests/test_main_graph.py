@@ -16,7 +16,7 @@ async def test_main_graph_chitchat_flow():
     config = {"configurable": {"thread_id": "test_th_chitchat"}}
 
     state = {
-        "messages": [HumanMessage(content="merhaba")],
+        "messages": [HumanMessage(content="hello")],
         "user_id": "user_flow_1",
         "thread_id": "test_th_chitchat",
     }
@@ -27,7 +27,7 @@ async def test_main_graph_chitchat_flow():
     assert len(result["messages"]) >= 2
     # Verify assistant replied warmly
     last_reply = result["messages"][-1].content
-    assert any(w in last_reply.lower() for w in ("merhaba", "hoş", "asistan"))
+    assert any(w in last_reply.lower() for w in ("hello", "welcome", "assistant", "hi", "help"))
 
 
 @pytest.mark.asyncio
@@ -49,7 +49,7 @@ async def test_main_graph_search_flow():
         mock_fetch.return_value = [sample_product]
 
         state = {
-            "messages": [HumanMessage(content="sony headphones ara")],
+            "messages": [HumanMessage(content="search sony headphones")],
             "user_id": "user_flow_2",
             "thread_id": "test_th_search",
         }

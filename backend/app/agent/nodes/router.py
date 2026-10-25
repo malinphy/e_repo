@@ -17,11 +17,11 @@ ROUTER_SYSTEM_PROMPT = """You are an e-commerce assistant router.
 Analyze the user's latest message considering the conversation history, available cart, and previously shown products.
 
 Classify the intent into EXACTLY ONE of the following:
-1. 'search': User wants to find, discover, browse, or buy new products (e.g. 'find running shoes under $100', 'iphone 15 ara').
-2. 'qa': User is asking a question about a product from the previously shown products (last_results) (e.g. 'does the 2nd one have warranty?', 'ilk ürün su geçirmez mi?', 'tell me more about the sony headphones').
-3. 'cart': User wants to view, add, or remove items from their cart (e.g. 'add the 2nd one to cart', 'sepetime ekle', 'sepetimde ne var', 'remove the shoes').
-4. 'checkout': User wants to proceed to purchase / pay for what is currently in their cart (e.g. 'checkout', 'satın al', 'siparişi tamamla', 'ödeme yap').
-5. 'chitchat': Greetings, small talk, gratitude, or off-topic conversation (e.g. 'hello', 'how are you', 'teşekkürler', 'hava nasıl').
+1. 'search': User wants to find, discover, browse, or buy new products (e.g. 'find running shoes under $100', 'search iphone 15').
+2. 'qa': User is asking a question about a product from the previously shown products (last_results) (e.g. 'does the 2nd one have warranty?', 'which is the cheapest one?', 'tell me more about the sony headphones').
+3. 'cart': User wants to view, add, or remove items from their cart (e.g. 'add the 2nd one to cart', 'add to my cart', 'what is in my cart', 'remove the shoes').
+4. 'checkout': User wants to proceed to purchase / pay for what is currently in their cart (e.g. 'checkout', 'buy now', 'complete order', 'pay').
+5. 'chitchat': Greetings, small talk, gratitude, or off-topic conversation (e.g. 'hello', 'how are you', 'thank you').
 
 Context:
 - Number of previously shown products in last_results: {num_products}
@@ -42,17 +42,17 @@ def _heuristic_classify(
     lowered = query.strip().lower()
 
     # Checkout check
-    checkout_terms = ("checkout", "satın al", "satin al", "sipariş ver", "siparis ver", "ödeme yap", "odeme yap", "buy now")
+    checkout_terms = ("checkout", "buy now", "pay", "order now", "complete order", "purchase")
     if any(term in lowered for term in checkout_terms):
         return RouterOutput(intent="checkout", reasoning="Detected checkout keywords")
 
     # Cart check
-    cart_terms = ("sepet", "cart", "basket", "sepete ekle", "sepete at", "sepetten çıkar", "sepetten cikar", "add to cart", "remove from cart")
+    cart_terms = ("cart", "basket", "add to cart", "remove from cart", "show my cart", "view cart", "my cart")
     if any(term in lowered for term in cart_terms):
         action = "view"
-        if any(w in lowered for w in ("ekle", "at", "add")):
+        if any(w in lowered for w in ("add", "put")):
             action = "add"
-        elif any(w in lowered for w in ("çıkar", "cikar", "sil", "remove", "delete")):
+        elif any(w in lowered for w in ("remove", "delete", "drop", "clear")):
             action = "remove"
         return RouterOutput(
             intent="cart",
@@ -62,11 +62,11 @@ def _heuristic_classify(
 
     # QA check (if there are previous products and user asks about one or comparison)
     qa_terms = (
-        "garanti", "warranty", "özellik", "ozellik", "renk", "color", "farkı ne", "farki ne",
-        "şarj", "sarj", "detay", "cheapest", "cheaper", "expensive", "en ucuz", "en pahalı",
-        "en pahali", "fiyatı", "hangisi", "which", "best", "en iyi", "compare", "karşılaştır"
+        "warranty", "features", "feature", "color", "difference",
+        "battery", "details", "cheapest", "cheaper", "expensive",
+        "price", "which", "best", "compare", "specification", "specs"
     )
-    is_referring_item = any(ref in lowered for ref in ("1.", "2.", "3.", "ilk", "ikinci", "üçüncü", "1st", "2nd", "3rd", "bu ürün", "hangisi", "which", "cheapest", "en ucuz"))
+    is_referring_item = any(ref in lowered for ref in ("1.", "2.", "3.", "1st", "2nd", "3rd", "first", "second", "third", "this product", "this item", "this one", "which", "cheapest"))
     if has_last_results and (is_referring_item or any(term in lowered for term in qa_terms)):
         return RouterOutput(
             intent="qa",
@@ -75,7 +75,7 @@ def _heuristic_classify(
         )
 
     # Chitchat check
-    greetings = ("merhaba", "selam", "günaydın", "gunaydin", "iyi günler", "hello", "hi", "hey", "teşekkür", "tesekkur", "thanks", "thank you")
+    greetings = ("hello", "hi", "hey", "good morning", "good evening", "thanks", "thank you")
     if any(w == lowered or lowered.startswith(w + " ") for w in greetings):
         return RouterOutput(intent="chitchat", reasoning="Detected greeting / chitchat")
 

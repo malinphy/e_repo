@@ -30,10 +30,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         <div className="cart-drawer-header">
           <div className="cart-header-title">
             <ShoppingBag size={20} color="#6366f1" />
-            <h3>Alışveriş Sepeti</h3>
+            <h3>Shopping Cart</h3>
             <span className="cart-badge-count">{items.length}</span>
           </div>
-          <button onClick={onClose} className="btn-icon" title="Kapat">
+          <button onClick={onClose} className="btn-icon" title="Close">
             <X size={20} />
           </button>
         </div>
@@ -45,8 +45,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               <div className="cart-empty-icon">
                 <ShoppingBag size={48} strokeWidth={1} color="#64748b" />
               </div>
-              <h4>Sepetiniz Henüz Boş</h4>
-              <p>Asistandan ürün aramasını isteyebilir ve listelenen ürünleri sepete ekleyebilirsiniz.</p>
+              <h4>Your Cart is Empty</h4>
+              <p>Ask the assistant to search for items and add them directly to your cart.</p>
             </div>
           ) : (
             <div className="cart-items-list">
@@ -67,7 +67,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       {item.title}
                     </span>
                     <div className="cart-item-sub">
-                      <span className="cart-item-source">{item.source?.toUpperCase() || 'MAĞAZA'}</span>
+                      <span className="cart-item-source">{item.source?.toUpperCase() || 'STORE'}</span>
                       <span className="cart-item-qty">x{item.quantity}</span>
                     </div>
                     <div className="cart-item-price">
@@ -82,7 +82,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         target="_blank"
                         rel="noreferrer"
                         className="btn-icon-tiny"
-                        title="Mağazada Gör"
+                        title="View in Store"
                       >
                         <ExternalLink size={13} />
                       </a>
@@ -90,7 +90,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     <button
                       onClick={() => onRemoveItem(String(item.item_id || item.product_id))}
                       className="btn-icon-tiny btn-remove"
-                      title="Sepetten Sil"
+                      title="Remove from Cart"
                     >
                       <Trash2 size={13} />
                     </button>
@@ -105,13 +105,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
         {items.length > 0 && (
           <div className="cart-drawer-footer">
             <div className="cart-total-row">
-              <span className="cart-total-label">Ara Toplam:</span>
+              <span className="cart-total-label">Subtotal:</span>
               <span className="cart-total-value">
                 {currency === 'USD' ? '$' : currency} {totalAmount.toFixed(2)}
               </span>
             </div>
             <button onClick={onStartCheckout} className="btn-checkout-now">
-              <span>Siparişi Tamamla</span>
+              <span>Proceed to Checkout</span>
               <ArrowRight size={16} />
             </button>
           </div>

@@ -1,57 +1,57 @@
-# E-Commerce AI Agent - Frontend Mimarisi ve Kurulum Kılavuzu
+# E-Commerce AI Agent - Frontend Architecture and Setup Guide
 
-Bu doküman, LangGraph ve FastAPI tabanlı akıllı e-ticaret asistanı için geliştirilen Vite + React + TypeScript arayüzünün yapısını, entegrasyonlarını ve çalıştırma adımlarını içerir.
-
----
-
-## 1. Mimari Genel Bakış
-
-Frontend, modern e-ticaret deneyimini ChatGPT tarzı sohbet asistanı ile birleştiren yüksek performanslı bir Single Page Application (SPA) olarak geliştirilmiştir.
-
-### Temel Özellikler
-1. **ChatGPT Tarzı Kenar Çubuğu (Sidebar):**
-   - Kullanıcının önceki sohbet oturumlarını listeler (`/api/chat/threads`).
-   - "Yeni Sohbet" butonu ile yeni izole oturum başlatır.
-   - Her oturumun geçmiş mesajlarını anında yükler veya oturumu silebilir.
-2. **Akıllı Mesajlaşma & Intent Rozetleri (Chat Stream):**
-   - Gelen her yanıt için tespit edilen niyet rozeti (`Arama`, `Sepet İşlemi`, `Ödeme / Onay`, `Soru-Cevap`, `Sohbet`).
-   - Formatlanmış markdown, madde işaretleri, vurgular ve kalın metin desteği.
-3. **Zengin Ürün Kartları & Izgara (Product Cards / Grid):**
-   - Arama sonuçlarında dönen ürünlerin görseli, adı, fiyatı, pazar yeri etiketi (`Walmart`, `eBay`, `Amazon`, `Google Shopping`), yıldız puanı ve inceleme sayısı.
-   - Doğrudan mağaza linkine yönlendirme ve tek tıkla sepete ekleme butonu.
-4. **Human-in-the-Loop Checkout Onay Kartı:**
-   - Ajan sipariş tamamlama aşamasına geldiğinde (`pending_action`), sohbet akışı içerisinde dinamik onay kartı belirir:
-     - Ürün dökümü ve toplam tutar.
-     - **[Siparişi Onayla]** -> `POST /api/chat/resume` (`approved: true`)
-     - **[İptal Et]** -> `POST /api/chat/resume` (`approved: false`)
-5. **Dinamik Sepet Paneli (Cart Drawer):**
-   - Sağdan açılan çekmecede sepet içeriği, adetler, fiyatlar ve tek tıkla silme (`/api/cart/remove`).
-   - "Siparişi Tamamla" aksiyonu.
+This document describes the structure, integrations, and instructions for running the Vite + React + TypeScript single-page application built for the LangGraph and FastAPI shopping assistant.
 
 ---
 
-## 2. Dizin Yapısı
+## 1. Architectural Overview
+
+The frontend is a modern single-page application (SPA) combining an e-commerce assistant experience with a ChatGPT-style conversational user interface.
+
+### Key Features
+1. **ChatGPT-Style Sidebar:**
+   - Lists previous user chat threads (`/api/chat/threads`).
+   - "New Chat" button creates an isolated conversation thread.
+   - Restores message history per thread or deletes threads on demand.
+2. **Intelligent Messaging & Intent Badges (Chat Stream):**
+   - Displays real-time intent badge per reply (`Search`, `Cart Action`, `Checkout / Approval`, `Product Q&A`, `Chat`).
+   - Formatted markdown, lists, highlights, and link formatting.
+3. **Rich Product Cards & Grid:**
+   - Displays marketplace products with image, title, price, marketplace badge (`Walmart`, `eBay`, `Amazon`, `Google Shopping`), star rating, and review counts.
+   - Direct store link and single-click "Add to Cart" button.
+4. **Human-in-the-Loop Checkout Approval Card:**
+   - When the agent prepares order confirmation (`pending_action`), an approval card renders directly inside the chat stream:
+     - Item breakdown and total amount.
+     - **[Confirm Order]** -> `POST /api/chat/resume` (`approved: true`)
+     - **[Cancel]** -> `POST /api/chat/resume` (`approved: false`)
+5. **Interactive Cart Drawer:**
+   - Slide-over drawer detailing active cart items, quantities, prices, and one-click removal (`/api/cart/remove`).
+   - "Proceed to Checkout" action button.
+
+---
+
+## 2. Directory Structure
 
 ```
 frontend/
 ├── src/
 │   ├── components/
-│   │   ├── CartDrawer.tsx           # Sağdan açılan canlı sepet çekmecesi
-│   │   ├── ChatArea.tsx             # Mesaj akışı, öneriler ve input alanı
-│   │   ├── CheckoutInterruptCard.tsx# Human-in-the-Loop onay kartı
-│   │   ├── Header.tsx               # Üst çubuk, durum göstergesi ve sepet butonu
-│   │   ├── MessageBubble.tsx        # Mesaj balonları, markdown ve intent rozetleri
-│   │   ├── ProductCard.tsx          # Zengin ürün kartı
-│   │   ├── ProductGrid.tsx          # Ürün kartları ızgarası
-│   │   └── Sidebar.tsx              # ChatGPT tarzı oturum listesi ve yeni sohbet
+│   │   ├── CartDrawer.tsx           # Slide-over shopping cart drawer
+│   │   ├── ChatArea.tsx             # Message stream, quick suggestions, and input
+│   │   ├── CheckoutInterruptCard.tsx# Human-in-the-Loop order approval card
+│   │   ├── Header.tsx               # Top navigation bar, status indicator, cart toggle
+│   │   ├── MessageBubble.tsx        # Message bubbles with markdown and intent badges
+│   │   ├── ProductCard.tsx          # Rich product card with image and store link
+│   │   ├── ProductGrid.tsx          # Responsive grid of product cards
+│   │   └── Sidebar.tsx              # Thread history list and new chat action
 │   ├── services/
-│   │   └── api.ts                   # Backend FastAPI endpoint entegrasyonu
+│   │   └── api.ts                   # FastAPI backend client integration
 │   ├── types/
-│   │   └── index.ts                 # Product, Cart, Chat, Thread TypeScript tipleri
-│   ├── App.css                      # Modern dark theme, glassmorphism stilleri
-│   ├── App.tsx                      # Ana uygulama koordinatörü ve state yönetimi
-│   ├── index.css                    # Tasarım sistemi, renkler ve değişkenler
-│   └── main.tsx                     # React kök bileşeni
+│   │   └── index.ts                 # Product, Cart, Chat, and Thread TypeScript interfaces
+│   ├── App.css                      # Modern dark theme styles
+│   ├── App.tsx                      # Root application coordinator and state management
+│   ├── index.css                    # Design tokens, typography, and color variables
+│   └── main.tsx                     # React root entrypoint
 ├── .env                             # VITE_API_BASE_URL=http://127.0.0.1:8000
 ├── package.json
 └── vite.config.ts
@@ -59,31 +59,31 @@ frontend/
 
 ---
 
-## 3. Çalıştırma Adımları
+## 3. Running the Project
 
-### 1. Backend Servisini Başlatma
-Proje kök dizininde:
+### 1. Start Backend API
+From the project root:
 ```bash
 python -m backend.main
 ```
-> API `http://127.0.0.1:8000` üzerinde ve Swagger dökümantasyonu `http://127.0.0.1:8000/docs` adresinde hazır olacaktır.
+> API will run at `http://127.0.0.1:8000` with Swagger documentation at `http://127.0.0.1:8000/docs`.
 
-### 2. Frontend Uygulamasını Başlatma
-`frontend` dizininde:
+### 2. Start Frontend Dev Server
+From the `frontend` directory:
 ```bash
 cd frontend
 npm run dev
 ```
-> Arayüz varsayılan olarak `http://localhost:5173` adresinde açılacaktır.
+> Web UI will be available at `http://localhost:5173`.
 
 ---
 
-## 4. Backend Entegrasyon Sözleşmesi
+## 4. Backend Integration Contract
 
 - `POST /api/chat`: `{ message: string, user_id: string, thread_id?: string }`
 - `POST /api/chat/resume`: `{ thread_id: string, approved: boolean, user_id?: string }`
 - `GET /api/chat/threads`: `?user_id=guest_user`
-- `GET /api/chat/threads/{id}/messages`: Thread geçmişi
-- `DELETE /api/chat/threads/{id}`: Thread silme
+- `GET /api/chat/threads/{id}/messages`: Thread message history
+- `DELETE /api/chat/threads/{id}`: Delete thread
 - `GET /api/cart`: `?user_id=guest_user`
 - `POST /api/cart/remove`: `{ user_id: string, item_reference: string }`

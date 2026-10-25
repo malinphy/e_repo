@@ -12,10 +12,10 @@ from ..state import ShopState
 logger = logging.getLogger(__name__)
 
 CHITCHAT_FALLBACKS = {
-    "merhaba": "Merhaba! Alışveriş asistanınıza hoş geldiniz. Hangi ürünü aramak veya incelemek istersiniz?",
-    "selam": "Selam! Bugün size en uygun fiyatlı ve kaliteli ürünleri bulmak için buradayım. Ne aramıştınız?",
-    "teşekkür": "Rica ederim, her zaman buradayım! Başka bir ürün aramak isterseniz söylemeniz yeterli.",
-    "sağol": "Rica ederim! İyi alışverişler dilerim.",
+    "hello": "Hello! Welcome to your shopping assistant. What product would you like to search for or explore?",
+    "hi": "Hi there! I am here to help you find the best deals and quality products today. What are you looking for?",
+    "thanks": "You're very welcome! If you want to search for anything else, just let me know.",
+    "thank you": "You're welcome! Enjoy your shopping.",
 }
 
 
@@ -23,7 +23,7 @@ def chitchat_node(state: ShopState) -> Dict[str, Any]:
     """Generates a friendly conversation reply with full awareness of the conversation history."""
     messages = state.get("messages") or []
     if not messages:
-        return {"messages": [AIMessage(content="Merhaba! Size nasıl yardımcı olabilirim?")]}
+        return {"messages": [AIMessage(content="Hello! How can I help you today?")]}
 
     last_text = messages[-1].content
     if not isinstance(last_text, str):
@@ -40,9 +40,9 @@ def chitchat_node(state: ShopState) -> Dict[str, Any]:
     settings = get_settings()
     if not settings.OPENAI_API_KEY:
         reply_content = (
-            "Merhaba! Ben sizin akıllı alışveriş asistanınızım. "
-            "Walmart, eBay, Amazon ve Google Shopping üzerinde ürün arayabilir, "
-            "fiyatları karşılaştırabilir ve sepetinize ekleyebilirsiniz. Ne aramak istersiniz?"
+            "Hello! I am your AI shopping assistant. "
+            "I can search and compare products across Walmart, eBay, Amazon, and Google Shopping, "
+            "manage your cart, and help you checkout. What would you like to find?"
         )
     else:
         try:
@@ -51,8 +51,8 @@ def chitchat_node(state: ShopState) -> Dict[str, Any]:
                 content=(
                     "You are a friendly and intelligent e-commerce shopping assistant with full awareness of the conversation history. "
                     "You have direct access to all previous messages in this conversation. "
-                    "Respond helpfully, accurately, and concisely in the user's language (Turkish or English). "
-                    "If the user asks about previous messages or questions (e.g. 'what was my first question?', 'önce ne sormuştum?'), "
+                    "Respond helpfully, accurately, and concisely in English. "
+                    "If the user asks about previous messages or questions (e.g. 'what was my first question?'), "
                     "inspect the conversation history provided and answer their question accurately."
                 )
             )
@@ -63,6 +63,6 @@ def chitchat_node(state: ShopState) -> Dict[str, Any]:
             reply_content = response.content if hasattr(response, "content") else str(response)
         except Exception as exc:
             logger.warning("LLM chitchat failed: %s", exc)
-            reply_content = "Merhaba! Size nasıl yardımcı olabilirim?"
+            reply_content = "Hello! How can I help you today?"
 
     return {"messages": [AIMessage(content=reply_content)]}

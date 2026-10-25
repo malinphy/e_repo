@@ -38,7 +38,7 @@ def load_context_node(state: ShopState) -> Dict[str, Any]:
         # 2. Ensure chat_thread exists in DB
         thread = db.scalar(select(ChatThread).where(ChatThread.thread_id == thread_id))
         if not thread:
-            thread = ChatThread(thread_id=thread_id, user_id=user_id, title="Alışveriş Sohbeti")
+            thread = ChatThread(thread_id=thread_id, user_id=user_id, title="Shopping Chat")
             db.add(thread)
             db.flush()
 

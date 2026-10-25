@@ -11,7 +11,7 @@ export const App: React.FC = () => {
   const [userId] = useState<string>('guest_user');
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
-  const [activeThreadTitle, setActiveThreadTitle] = useState<string>('Yeni Alışveriş');
+  const [activeThreadTitle, setActiveThreadTitle] = useState<string>('New Shopping Chat');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
@@ -110,7 +110,7 @@ export const App: React.FC = () => {
   // New Chat
   const handleNewChat = () => {
     setActiveThreadId(null);
-    setActiveThreadTitle('Yeni Alışveriş Sohbeti');
+    setActiveThreadTitle('New Shopping Chat');
     setMessages([]);
   };
 
@@ -174,7 +174,7 @@ export const App: React.FC = () => {
       const errorMessage: ChatMessage = {
         id: `err_${Date.now()}`,
         role: 'assistant',
-        content: `⚠️ Bir hata oluştu: ${err.message || 'Sunucuya bağlanılamadı. Lütfen backend servisinin çalıştığından emin olun.'}`,
+        content: `⚠️ An error occurred: ${err.message || 'Could not connect to server. Please verify the backend is running.'}`,
         created_at: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -186,7 +186,7 @@ export const App: React.FC = () => {
 
   // Quick Add to Cart from Product Card
   const handleAddToCart = (product: Product) => {
-    handleSendMessage(`"${product.title}" ürününü sepete ekle`);
+    handleSendMessage(`Add "${product.title}" to cart`);
   };
 
   // Human-in-the-Loop: Resume Checkout Approval / Cancel
@@ -213,7 +213,7 @@ export const App: React.FC = () => {
       const errorMessage: ChatMessage = {
         id: `err_${Date.now()}`,
         role: 'assistant',
-        content: `⚠️ Sipariş onayı işlenirken bir sorun oluştu: ${err.message}`,
+        content: `⚠️ Error processing order confirmation: ${err.message}`,
         created_at: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -235,7 +235,7 @@ export const App: React.FC = () => {
   // Start Checkout from Cart Drawer
   const handleStartCheckout = () => {
     setIsCartOpen(false);
-    handleSendMessage('Sepetimi kontrol et ve sipariş oluştur');
+    handleSendMessage('Review my cart and proceed to checkout');
   };
 
   return (

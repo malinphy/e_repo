@@ -45,7 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             onClick={onToggle}
             className="btn-icon sidebar-collapse-btn"
-            title="Kenar çubuğunu gizle"
+            title="Collapse sidebar"
           >
             <ChevronLeft size={18} />
           </button>
@@ -55,16 +55,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="sidebar-action-container">
           <button onClick={onNewChat} className="btn-new-chat">
             <Plus size={18} />
-            <span>Yeni Sohbet</span>
+            <span>New Chat</span>
           </button>
         </div>
 
         {/* Threads History List */}
         <div className="sidebar-threads-container">
-          <div className="threads-section-title">Geçmiş Sohbetler</div>
+          <div className="threads-section-title">Chat History</div>
           {threads.length === 0 ? (
             <div className="threads-empty">
-              <span>Henüz kayıtlı sohbet yok. Yeni bir sohbet başlatın!</span>
+              <span>No conversations yet. Start a new chat!</span>
             </div>
           ) : (
             <div className="threads-list">
@@ -77,8 +77,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClick={() => onSelectThread(t.thread_id)}
                   >
                     <MessageSquare size={16} className="thread-icon" />
-                    <span className="thread-title" title={t.title || 'Sohbet'}>
-                      {t.title || 'Yeni Sohbet'}
+                    <span className="thread-title" title={t.title || 'Chat'}>
+                      {t.title || 'New Chat'}
                     </span>
                     <button
                       onClick={(e) => {
@@ -86,7 +86,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         onDeleteThread(t.thread_id);
                       }}
                       className="btn-delete-thread"
-                      title="Sohbeti Sil"
+                      title="Delete Chat"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -105,7 +105,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
             <div className="user-info">
               <span className="user-name">{userId}</span>
-              <span className="user-status-dot">Çevrimiçi</span>
+              <span className="user-status-dot">Online</span>
             </div>
           </div>
         </div>

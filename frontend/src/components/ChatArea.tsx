@@ -13,10 +13,10 @@ interface ChatAreaProps {
 }
 
 const QUICK_SUGGESTIONS = [
-  { label: '🎧 100$ altı bluetooth kulaklık ara', text: '100 dolar altı en iyi bluetooth kulaklıkları ara' },
-  { label: '💻 Yazılımcı için ergonomik mekanik klavye', text: 'Yazılım geliştiriciler için kablosuz mekanik klavye öner' },
-  { label: '🛍️ Aktif sepetimi listele', text: 'Sepetimde hangi ürünler var?' },
-  { label: '💳 Siparişimi onayla ve satın al', text: 'Sepetimi kontrol et ve sipariş oluştur' },
+  { label: '🎧 Bluetooth headphones under $100', text: 'Find the best bluetooth headphones under 100 dollars' },
+  { label: '💻 Mechanical keyboard for coders', text: 'Recommend a wireless mechanical keyboard for software developers' },
+  { label: '🛍️ View my shopping cart', text: 'What items are currently in my cart?' },
+  { label: '💳 Checkout and review order', text: 'Review my cart and start checkout' },
 ];
 
 export const ChatArea: React.FC<ChatAreaProps> = ({
@@ -67,7 +67,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           <div className="welcome-hero fade-in">
             <div className="loading-bubble" style={{ margin: 'auto' }}>
               <Loader2 size={18} className="spin-icon" color="#818cf8" />
-              <span>Sohbet geçmişi yükleniyor...</span>
+              <span>Loading chat history...</span>
             </div>
           </div>
         ) : messages.length === 0 ? (
@@ -75,10 +75,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             <div className="welcome-icon-glow">
               <Sparkles size={36} color="#6366f1" />
             </div>
-            <h2 className="welcome-title">Size bugün ne bulmamı istersiniz?</h2>
+            <h2 className="welcome-title">What can I find for you today?</h2>
             <p className="welcome-subtitle">
-              Walmart, eBay ve Amazon üzerinde anlık fiyat karşılaştırması yapabilir,
-              sepetinizi yönetebilir ve tek tıkla sipariş onayı verebilirim.
+              I can compare prices in real time across Walmart, eBay, and Amazon,
+              manage your shopping cart, and guide you through seamless checkout.
             </p>
 
             <div className="suggestions-grid">
@@ -112,7 +112,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 </div>
                 <div className="loading-bubble">
                   <Loader2 size={16} className="spin-icon" color="#818cf8" />
-                  <span>Ajan pazar yerlerini tarıyor ve yanıtı hazırlıyor...</span>
+                  <span>Searching marketplaces and preparing response...</span>
                 </div>
               </div>
             )}
@@ -129,7 +129,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Bir ürün arayın, sepete ekleyin veya soru sorun... (Örn: 2. ürünü sepete ekle)"
+            placeholder="Search for products, manage cart, or ask questions... (e.g. 'Add the 2nd item to cart')"
             rows={1}
             disabled={isLoading}
             className="chat-textarea"
@@ -139,7 +139,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             type="submit"
             disabled={!inputText.trim() || isLoading}
             className="btn-send-message"
-            title="Gönder (Enter)"
+            title="Send (Enter)"
           >
             {isLoading ? (
               <Loader2 size={18} className="spin-icon" />
@@ -149,7 +149,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           </button>
         </form>
         <div className="input-helper-text">
-          Enter ile gönderin • Shift + Enter ile yeni satır • LangGraph Router ile yönlendirilir
+          Press Enter to send • Shift + Enter for new line • Routed by LangGraph
         </div>
       </div>
     </div>

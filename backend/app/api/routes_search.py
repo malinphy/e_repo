@@ -59,7 +59,7 @@ def _get_chat_search_results(thread_id: Optional[str], user_id: str) -> SearchRe
                 query=None,
                 total_results=0,
                 products=[],
-                formatted_message="Bu sohbette henüz bir arama yapılmadı veya ürün bulunamadı.",
+                formatted_message="No search has been conducted or no products found in this chat yet.",
             )
 
         raw_products = msg.metadata_json.get("products") or []

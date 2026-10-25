@@ -31,7 +31,7 @@ def test_root_endpoint():
 def test_chat_endpoint_chitchat():
     """Verify POST /api/chat responds to greetings."""
     payload = {
-        "message": "merhaba nasılsın",
+        "message": "hello how are you",
         "user_id": "api_test_user",
     }
     response = client.post("/api/chat", json=payload)
@@ -59,7 +59,7 @@ def test_chat_search_flow_and_subsequent_search_api_lookup():
 
         # 1. User performs a search in Chat
         chat_payload = {
-            "message": "nike air force ayakkabı ara",
+            "message": "search for nike air force shoes",
             "user_id": "user_tennis_test",
             "thread_id": "thread_tennis_101",
         }
@@ -90,12 +90,12 @@ def test_conversation_memory_continuity():
     user_id = "mem_user"
 
     # Turn 1
-    r1 = client.post("/api/chat", json={"message": "selam", "thread_id": thread_id, "user_id": user_id})
+    r1 = client.post("/api/chat", json={"message": "hello", "thread_id": thread_id, "user_id": user_id})
     assert r1.status_code == 200
     assert r1.json()["thread_id"] == thread_id
 
     # Turn 2
-    r2 = client.post("/api/chat", json={"message": "sepetimde ne var?", "thread_id": thread_id, "user_id": user_id})
+    r2 = client.post("/api/chat", json={"message": "what is in my cart?", "thread_id": thread_id, "user_id": user_id})
     assert r2.status_code == 200
     assert r2.json()["thread_id"] == thread_id
     assert r2.json()["intent"] == "cart"
@@ -106,17 +106,17 @@ def test_thread_isolation_like_chatgpt():
     user_id = "chatgpt_user_1"
 
     # 1. Explicitly create a new thread (like clicking 'New Chat' in ChatGPT)
-    new_thread_res = client.post("/api/chat/threads", json={"user_id": user_id, "title": "Kulaklık Arama"})
+    new_thread_res = client.post("/api/chat/threads", json={"user_id": user_id, "title": "Headphones Search"})
     assert new_thread_res.status_code == 200
     thread_a = new_thread_res.json()["thread_id"]
     assert thread_a.startswith("th_")
 
     # 2. Chat on Thread A (Turn 1 & 2)
-    r_a1 = client.post("/api/chat", json={"message": "merhaba", "thread_id": thread_a, "user_id": user_id})
+    r_a1 = client.post("/api/chat", json={"message": "hello", "thread_id": thread_a, "user_id": user_id})
     assert r_a1.status_code == 200
     assert r_a1.json()["thread_id"] == thread_a
 
-    r_a2 = client.post("/api/chat", json={"message": "sepetimde ne var?", "thread_id": thread_a, "user_id": user_id})
+    r_a2 = client.post("/api/chat", json={"message": "what is in my cart?", "thread_id": thread_a, "user_id": user_id})
     assert r_a2.status_code == 200
 
     # 3. Verify messages in Thread A
@@ -126,7 +126,7 @@ def test_thread_isolation_like_chatgpt():
     assert len(msgs_a) >= 4  # 2 user messages + 2 assistant replies
 
     # 4. Open a brand NEW Thread B (Thread B history must be completely isolated and empty!)
-    new_thread_b_res = client.post("/api/chat/threads", json={"user_id": user_id, "title": "Yeni Sohbet"})
+    new_thread_b_res = client.post("/api/chat/threads", json={"user_id": user_id, "title": "New Chat"})
     assert new_thread_b_res.status_code == 200
     thread_b = new_thread_b_res.json()["thread_id"]
     assert thread_b != thread_a
@@ -137,7 +137,7 @@ def test_thread_isolation_like_chatgpt():
     assert len(msg_b_res.json()) == 0
 
     # Send first message in Thread B
-    r_b1 = client.post("/api/chat", json={"message": "selam", "thread_id": thread_b, "user_id": user_id})
+    r_b1 = client.post("/api/chat", json={"message": "hi there", "thread_id": thread_b, "user_id": user_id})
     assert r_b1.status_code == 200
     assert r_b1.json()["thread_id"] == thread_b
 

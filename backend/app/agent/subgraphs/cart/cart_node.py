@@ -36,9 +36,9 @@ def cart_node(state: ShopState) -> Dict[str, Any]:
 
     lowered = last_query.lower()
     if not action:
-        if any(w in lowered for w in ("ekle", "at", "add")):
+        if any(w in lowered for w in ("add", "put", "include")):
             action = "add"
-        elif any(w in lowered for w in ("çıkar", "cikar", "sil", "remove", "delete")):
+        elif any(w in lowered for w in ("remove", "delete", "drop", "clear")):
             action = "remove"
         else:
             action = "view"
@@ -51,15 +51,15 @@ def cart_node(state: ShopState) -> Dict[str, Any]:
         target_product = resolve_product_reference(item_ref, last_results)
         if not target_product:
             reply = (
-                "⚠️ Hangi ürünü sepete eklemek istediğinizi tam anlayamadım. "
-                "Lütfen *'1. ürünü ekle'* veya ürün adını belirterek tekrar deneyin."
+                "⚠️ I could not identify which product you want to add to your cart. "
+                "Please specify by index or name (e.g. *'add the 1st item'*)."
             )
             return {"messages": [AIMessage(content=reply)]}
 
         updated_cart = add_item_to_cart(user_id, target_product, quantity=quantity)
         reply = (
             f"✅ **'{target_product.get('title')}'** (${target_product.get('price'):.2f}) "
-            f"sepetinize {quantity} adet eklendi!\n\n"
+            f"has been added to your cart ({quantity} item{'s' if quantity > 1 else ''})!\n\n"
             f"{format_cart_message(updated_cart)}"
         )
         return {
