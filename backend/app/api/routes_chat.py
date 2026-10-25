@@ -160,14 +160,16 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
         messages = result.get("messages") or []
         reply_text = messages[-1].content if messages else "Yanıt üretilemedi."
 
-    # Parse last_results into validated Product objects
-    raw_products = result.get("last_results") or []
+    # Parse last_results into validated Product objects ONLY for search turns
+    # (prevents QA, cart, and chitchat turns from repeating duplicate product grids)
     validated_products: list[Product] = []
-    for item in raw_products:
-        try:
-            validated_products.append(Product.model_validate(item))
-        except Exception:
-            pass
+    if result.get("intent") == "search":
+        raw_products = result.get("last_results") or []
+        for item in raw_products:
+            try:
+                validated_products.append(Product.model_validate(item))
+            except Exception:
+                pass
 
     return ChatResponse(
         reply=str(reply_text),
@@ -220,13 +222,7 @@ async def resume_checkout_endpoint(request: CheckoutResumeRequest) -> ChatRespon
     messages = result.get("messages") or []
     reply_text = messages[-1].content if messages else "İşlem tamamlandı."
 
-    raw_products = result.get("last_results") or []
     validated_products: list[Product] = []
-    for item in raw_products:
-        try:
-            validated_products.append(Product.model_validate(item))
-        except Exception:
-            pass
 
     return ChatResponse(
         reply=str(reply_text),

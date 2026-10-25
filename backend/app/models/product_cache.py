@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, List
 from sqlalchemy import DateTime, JSON, String, func
 from sqlalchemy.orm import Mapped, mapped_column
@@ -39,7 +39,7 @@ class ProductCache(Base):
 
     def is_expired(self) -> bool:
         """Check if cache record has expired."""
-        now = datetime.now(self.expires_at.tzinfo) if self.expires_at.tzinfo else datetime.utcnow()
+        now = datetime.now(self.expires_at.tzinfo) if self.expires_at.tzinfo else datetime.now(timezone.utc).replace(tzinfo=None)
         return now > self.expires_at
 
     def __repr__(self) -> str:

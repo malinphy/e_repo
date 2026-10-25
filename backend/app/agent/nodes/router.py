@@ -60,9 +60,13 @@ def _heuristic_classify(
             reasoning="Detected cart keywords",
         )
 
-    # QA check (if there are previous products and user asks about one)
-    qa_terms = ("garanti", "warranty", "özellik", "ozellik", "renk", "color", "farkı ne", "farki ne", "şarj", "sarj", "detay")
-    is_referring_item = any(ref in lowered for ref in ("1.", "2.", "3.", "ilk", "ikinci", "üçüncü", "1st", "2nd", "3rd", "bu ürün", "hangisi"))
+    # QA check (if there are previous products and user asks about one or comparison)
+    qa_terms = (
+        "garanti", "warranty", "özellik", "ozellik", "renk", "color", "farkı ne", "farki ne",
+        "şarj", "sarj", "detay", "cheapest", "cheaper", "expensive", "en ucuz", "en pahalı",
+        "en pahali", "fiyatı", "hangisi", "which", "best", "en iyi", "compare", "karşılaştır"
+    )
+    is_referring_item = any(ref in lowered for ref in ("1.", "2.", "3.", "ilk", "ikinci", "üçüncü", "1st", "2nd", "3rd", "bu ürün", "hangisi", "which", "cheapest", "en ucuz"))
     if has_last_results and (is_referring_item or any(term in lowered for term in qa_terms)):
         return RouterOutput(
             intent="qa",

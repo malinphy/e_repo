@@ -43,22 +43,23 @@ def persist_turn_node(state: ShopState) -> Dict[str, Any]:
     user_msg = messages[-2].content if len(messages) >= 2 else ""
     assistant_msg = messages[-1].content
 
-    # Prepare structured metadata (store last_results and search_query)
+    # Prepare structured metadata (store last_results and search_query only on search turns)
     metadata: Dict[str, Any] = {}
-    if state.get("last_results"):
-        metadata["products"] = state.get("last_results")
-    if state.get("search_query"):
-        metadata["search_query"] = state.get("search_query")
+    if intent == "search":
+        if state.get("last_results"):
+            metadata["products"] = state.get("last_results")
+        if state.get("search_query"):
+            metadata["search_query"] = state.get("search_query")
 
     db = SessionLocal()
     try:
-        from datetime import datetime
+        from datetime import datetime, timezone
         from ..models.chat import ChatThread
 
         # 1. Update thread updated_at and refine title if default
         thread = db.scalar(select(ChatThread).where(ChatThread.thread_id == thread_id))
         if thread:
-            thread.updated_at = datetime.utcnow()
+            thread.updated_at = datetime.now(timezone.utc)
             if not thread.title or thread.title in ("Alışveriş Sohbeti", "Sohbet", "Yeni Sohbet"):
                 thread.title = str(user_msg)[:50].strip()
 
