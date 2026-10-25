@@ -30,12 +30,12 @@ export const CheckoutInterruptCard: React.FC<CheckoutInterruptCardProps> = ({
         {completed ? (
           <>
             <CheckCircle2 size={20} className="icon-success" />
-            <span>Siparişiniz onaylandı ve başarıyla oluşturuldu!</span>
+            <span>Order approved and successfully placed!</span>
           </>
         ) : (
           <>
             <XCircle size={20} className="icon-cancel" />
-            <span>Sipariş işlemi iptal edildi. Sepetiniz korundu.</span>
+            <span>Order cancelled. Your cart items are preserved.</span>
           </>
         )}
       </div>
@@ -53,9 +53,9 @@ export const CheckoutInterruptCard: React.FC<CheckoutInterruptCardProps> = ({
             <AlertCircle size={20} color="#6366f1" />
           </div>
           <div>
-            <h4 className="interrupt-title">Satın Alma Onayı Bekleniyor</h4>
+            <h4 className="interrupt-title">Order Approval Required</h4>
             <p className="interrupt-subtitle">
-              Siparişinizin tamamlanması için lütfen aşağıdaki sepet özetini kontrol edin ve onaylayın.
+              Please review your order summary below to complete your purchase.
             </p>
           </div>
         </div>
@@ -80,7 +80,7 @@ export const CheckoutInterruptCard: React.FC<CheckoutInterruptCardProps> = ({
       {/* Total Amount */}
       {totalAmount !== undefined && (
         <div className="interrupt-total-row">
-          <span>Toplam Tutar:</span>
+          <span>Total Amount:</span>
           <span className="interrupt-total-price">
             ${Number(totalAmount).toFixed(2)}
           </span>
@@ -99,7 +99,7 @@ export const CheckoutInterruptCard: React.FC<CheckoutInterruptCardProps> = ({
           ) : (
             <CheckCircle2 size={16} />
           )}
-          <span>Siparişi Onayla</span>
+          <span>Confirm Order</span>
         </button>
 
         <button
@@ -108,7 +108,7 @@ export const CheckoutInterruptCard: React.FC<CheckoutInterruptCardProps> = ({
           className="btn-cancel-order"
         >
           <XCircle size={16} />
-          <span>İptal Et</span>
+          <span>Cancel</span>
         </button>
       </div>
     </div>

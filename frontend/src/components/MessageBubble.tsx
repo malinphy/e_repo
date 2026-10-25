@@ -14,16 +14,16 @@ interface MessageBubbleProps {
 const getIntentInfo = (intent?: string) => {
   switch (intent?.toLowerCase()) {
     case 'search':
-      return { label: 'Arama', icon: Search, colorClass: 'intent-search' };
+      return { label: 'Search', icon: Search, colorClass: 'intent-search' };
     case 'cart':
-      return { label: 'Sepet İşlemi', icon: ShoppingCart, colorClass: 'intent-cart' };
+      return { label: 'Cart Action', icon: ShoppingCart, colorClass: 'intent-cart' };
     case 'checkout':
-      return { label: 'Ödeme / Onay', icon: CreditCard, colorClass: 'intent-checkout' };
+      return { label: 'Checkout / Approval', icon: CreditCard, colorClass: 'intent-checkout' };
     case 'qa':
     case 'product_qa':
-      return { label: 'Ürün Soru-Cevap', icon: HelpCircle, colorClass: 'intent-qa' };
+      return { label: 'Product Q&A', icon: HelpCircle, colorClass: 'intent-qa' };
     case 'chitchat':
-      return { label: 'Sohbet', icon: MessageSquare, colorClass: 'intent-chat' };
+      return { label: 'Chat', icon: MessageSquare, colorClass: 'intent-chat' };
     default:
       return null;
   }
@@ -90,7 +90,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       {/* Bubble Content */}
       <div className="message-content-wrapper">
         <div className="message-header-meta">
-          <span className="sender-name">{isUser ? 'Siz' : 'ShopAgent AI'}</span>
+          <span className="sender-name">{isUser ? 'You' : 'ShopAgent AI'}</span>
           {intentInfo && IntentIcon && (
             <span className={`intent-badge ${intentInfo.colorClass}`}>
               <IntentIcon size={12} />

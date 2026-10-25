@@ -32,7 +32,7 @@ class ApiService {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: res.statusText }));
-      throw new Error(err.detail || 'Mesaj iletilirken bir hata oluştu.');
+      throw new Error(err.detail || 'An error occurred while sending the message.');
     }
     return res.json();
   }
@@ -55,7 +55,7 @@ class ApiService {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: res.statusText }));
-      throw new Error(err.detail || 'Sipariş onayı işlenemedi.');
+      throw new Error(err.detail || 'Order approval could not be processed.');
     }
     return res.json();
   }
@@ -64,20 +64,20 @@ class ApiService {
   async getThreads(userId: string = 'guest_user'): Promise<ThreadSummary[]> {
     const res = await fetch(`${this.baseUrl}/api/chat/threads?user_id=${encodeURIComponent(userId)}`);
     if (!res.ok) {
-      throw new Error('Sohbet geçmişi yüklenemedi.');
+      throw new Error('Failed to load chat history.');
     }
     return res.json();
   }
 
   // POST /api/chat/threads - Create new chat thread
-  async createThread(userId: string = 'guest_user', title: string = 'Yeni Sohbet'): Promise<ThreadSummary> {
+  async createThread(userId: string = 'guest_user', title: string = 'New Chat'): Promise<ThreadSummary> {
     const res = await fetch(`${this.baseUrl}/api/chat/threads`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_id: userId, title }),
     });
     if (!res.ok) {
-      throw new Error('Yeni sohbet oluşturulamadı.');
+      throw new Error('Failed to create new chat.');
     }
     return res.json();
   }
@@ -86,7 +86,7 @@ class ApiService {
   async getThreadMessages(threadId: string): Promise<ThreadMessageItem[]> {
     const res = await fetch(`${this.baseUrl}/api/chat/threads/${encodeURIComponent(threadId)}/messages`);
     if (!res.ok) {
-      throw new Error('Sohbet mesajları yüklenemedi.');
+      throw new Error('Failed to load chat messages.');
     }
     return res.json();
   }
@@ -97,7 +97,7 @@ class ApiService {
       method: 'DELETE',
     });
     if (!res.ok) {
-      throw new Error('Sohbet silinemedi.');
+      throw new Error('Failed to delete chat.');
     }
     return res.json();
   }
@@ -106,7 +106,7 @@ class ApiService {
   async getCart(userId: string = 'guest_user'): Promise<CartViewResponse> {
     const res = await fetch(`${this.baseUrl}/api/cart?user_id=${encodeURIComponent(userId)}`);
     if (!res.ok) {
-      throw new Error('Sepet bilgisi alınamadı.');
+      throw new Error('Failed to retrieve cart details.');
     }
     return res.json();
   }
@@ -122,7 +122,7 @@ class ApiService {
       }),
     });
     if (!res.ok) {
-      throw new Error('Ürün sepetten silinemedi.');
+      throw new Error('Failed to remove item from cart.');
     }
     return res.json();
   }
@@ -131,7 +131,7 @@ class ApiService {
   async getLatestSearchResults(threadId: string, userId: string = 'guest_user') {
     const res = await fetch(`${this.baseUrl}/api/search?thread_id=${encodeURIComponent(threadId)}&user_id=${encodeURIComponent(userId)}`);
     if (!res.ok) {
-      throw new Error('Arama sonuçları alınamadı.');
+      throw new Error('Failed to retrieve search results.');
     }
     return res.json();
   }

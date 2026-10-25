@@ -59,7 +59,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
           ) : (
             <div className="product-rating-verified">
               <ShieldCheck size={13} color="#10b981" />
-              <span>Doğrulanmış Ürün</span>
+              <span>Verified Product</span>
             </div>
           )}
         </div>
@@ -78,7 +78,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-icon product-link-btn"
-                title="Mağazada Görüntüle"
+                title="View in Store"
               >
                 <ExternalLink size={15} />
               </a>
@@ -86,10 +86,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, 
             <button
               onClick={() => onAddToCart && onAddToCart(product)}
               className="btn-add-cart"
-              title="Sepete Ekle"
+              title="Add to Cart"
             >
               <ShoppingCart size={14} />
-              <span>Ekle</span>
+              <span>Add</span>
             </button>
           </div>
         </div>

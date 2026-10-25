@@ -14,10 +14,10 @@ export const ProductGrid: React.FC<ProductGridProps> = ({ products, onAddToCart 
     <div className="product-grid-container">
       <div className="product-grid-header">
         <span className="product-grid-count">
-          Bulunan Ürünler ({products.length})
+          Discovered Products ({products.length})
         </span>
         <span className="product-grid-hint">
-          Sohbete "ikincisini sepete ekle" yazabilir veya butonu kullanabilirsiniz.
+          Say "add the 2nd one to cart" or use the Add button.
         </span>
       </div>
       <div className="product-grid">

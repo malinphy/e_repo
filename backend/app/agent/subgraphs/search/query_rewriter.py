@@ -13,11 +13,11 @@ from .state import SearchSubgraphState
 logger = logging.getLogger(__name__)
 
 _PRICE_EXTRACTOR = re.compile(
-    r"(?:under|below|less than|altı|alti|en fazla|maksimum|max|budget)\s*[:$]?\s*(\d+(?:[.,]\d+)?)",
+    r"(?:under|below|less than|maximum|max|budget)\s*[:$]?\s*(\d+(?:[.,]\d+)?)",
     re.IGNORECASE,
 )
 _NOISE_WORDS = re.compile(
-    r"\b(find|search|show me|buy|look for|please|ara|bul|istiyorum|bakar mısın|bakar misin|fiyatı|fiyati)\b",
+    r"\b(find|search|show me|buy|look for|please|price|cost|recommend)\b",
     re.IGNORECASE,
 )
 

@@ -86,12 +86,12 @@ def test_product_cache_ttl(db_session):
 def test_chat_thread_and_messages(db_session):
     """Test chat thread creation and message linkage."""
     user = User(id="usr_chat", email="chat@test.com")
-    thread = ChatThread(thread_id="th_100", user_id="usr_chat", title="Ayakkabı Arayışı")
+    thread = ChatThread(thread_id="th_100", user_id="usr_chat", title="Shoe Search")
     db_session.add_all([user, thread])
     db_session.flush()
 
-    msg1 = ChatMessage(thread_id="th_100", role="user", content="Merhaba spor ayakkabı arıyorum")
-    msg2 = ChatMessage(thread_id="th_100", role="assistant", content="İşte bulduğum ayakkabılar...", intent="search")
+    msg1 = ChatMessage(thread_id="th_100", role="user", content="Hello, I am looking for sneakers")
+    msg2 = ChatMessage(thread_id="th_100", role="assistant", content="Here are the shoes I found...", intent="search")
     db_session.add_all([msg1, msg2])
     db_session.flush()
 

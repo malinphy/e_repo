@@ -12,7 +12,7 @@ from backend.app.agent.state import ShopState
 def test_load_context_node_initializes_state():
     """Verify load_context populates user_id, thread_id, chat_id, and cart."""
     initial_state: ShopState = {
-        "messages": [HumanMessage(content="selam")],
+        "messages": [HumanMessage(content="hello")],
         "user_id": "test_user_node",
         "thread_id": "thread_node_1",
         "chat_id": None,
@@ -37,12 +37,12 @@ def test_load_context_node_initializes_state():
 @pytest.mark.parametrize(
     "query,has_products,expected_intent",
     [
-        ("iphone 15 pro max arıyorum", False, "search"),
-        ("2. sıradakini sepete ekle", True, "cart"),
-        ("sepetimi göster", False, "cart"),
-        ("2. ürünün garantisi var mı?", True, "qa"),
-        ("satın al ödeme yap", False, "checkout"),
-        ("merhaba nasılsın", False, "chitchat"),
+        ("find iphone 15 pro max", False, "search"),
+        ("add the 2nd one to cart", True, "cart"),
+        ("show my cart", False, "cart"),
+        ("does the 2nd one have warranty?", True, "qa"),
+        ("checkout and buy now", False, "checkout"),
+        ("hello how are you", False, "chitchat"),
     ],
 )
 def test_heuristic_router_classifications(query: str, has_products: bool, expected_intent: str):
@@ -58,7 +58,7 @@ def test_heuristic_router_classifications(query: str, has_products: bool, expect
 def test_router_node_fallback_execution():
     """Test router_node processes messages and updates intent in state."""
     state: ShopState = {
-        "messages": [HumanMessage(content="fiyatı 100 dolar altı ayakkabı bul")],
+        "messages": [HumanMessage(content="find shoes under 100 dollars")],
         "user_id": "u1",
         "thread_id": "t1",
         "chat_id": "c1",

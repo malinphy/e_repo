@@ -46,12 +46,12 @@ def test_router_output_schema():
 def test_shop_state_structure():
     """Verify ShopState attributes including user_id, thread_id, and chat_id."""
     state: ShopState = {
-        "messages": [HumanMessage(content="Nike ayakkabı arıyorum")],
+        "messages": [HumanMessage(content="I am looking for Nike shoes")],
         "user_id": "usr_99",
         "thread_id": "th_99",
         "chat_id": "chat_turn_1",
         "intent": "search",
-        "search_query": {"keywords": "Nike ayakkabı"},
+        "search_query": {"keywords": "Nike shoes"},
         "last_results": [{"id": "p1", "title": "Nike Air Max", "price": 120.0}],
         "cart": [],
         "pending_action": None,

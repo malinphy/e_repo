@@ -22,13 +22,13 @@ def test_resolve_product_reference():
     ]
 
     # 1. Numeric index
-    assert resolve_product_reference("2. ürünü ekle", candidates)["id"] == "p2"
+    assert resolve_product_reference("add the 2nd item", candidates)["id"] == "p2"
     assert resolve_product_reference("1st one", candidates)["id"] == "p1"
     assert resolve_product_reference("3", candidates)["id"] == "p3"
 
     # 2. Superlatives
-    assert resolve_product_reference("en ucuzunu ekle", candidates)["id"] == "p2"
-    assert resolve_product_reference("en pahalı olan", candidates)["id"] == "p3"
+    assert resolve_product_reference("add the cheapest one", candidates)["id"] == "p2"
+    assert resolve_product_reference("most expensive one", candidates)["id"] == "p3"
 
     # 3. Title keywords
     assert resolve_product_reference("ultraboost", candidates)["id"] == "p2"
@@ -71,7 +71,7 @@ def test_cart_database_operations():
 
 @pytest.mark.asyncio
 async def test_chat_cart_add_flow_end_to_end():
-    """Verify chat resolves '2. ürünü ekle' against last_results and updates state/cart."""
+    """Verify chat resolves 'add the 2nd item to cart' against last_results and updates state/cart."""
     app = build_shop_graph()
     thread_id = "th_cart_flow_1"
     config = {"configurable": {"thread_id": thread_id}}
@@ -82,7 +82,7 @@ async def test_chat_cart_add_flow_end_to_end():
     ]
 
     state_input = {
-        "messages": [HumanMessage(content="2. ürünü sepetime ekle")],
+        "messages": [HumanMessage(content="add the 2nd item to my cart")],
         "user_id": "user_cart_flow",
         "thread_id": thread_id,
         "last_results": candidates,
@@ -119,7 +119,7 @@ async def test_chat_qa_flow_end_to_end():
     ]
 
     state_input = {
-        "messages": [HumanMessage(content="bu kulaklığın garantisi ve şarjı ne kadar?")],
+        "messages": [HumanMessage(content="what is the warranty and battery life of these headphones?")],
         "user_id": "user_qa_flow",
         "thread_id": thread_id,
         "last_results": candidates,
@@ -130,4 +130,4 @@ async def test_chat_qa_flow_end_to_end():
     assert result["intent"] == "qa"
     latest_reply = result["messages"][-1].content
     assert "Sony WH-1000XM5" in latest_reply
-    assert any(term in latest_reply.lower() for term in ("30", "garanti", "pil", "battery", "warranty"))
+    assert any(term in latest_reply.lower() for term in ("30", "battery", "warranty", "2-year", "hour"))

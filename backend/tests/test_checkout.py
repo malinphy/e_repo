@@ -57,14 +57,14 @@ def test_checkout_empty_cart():
     thread_id = "thread_empty_cart"
 
     payload = {
-        "message": "satın al",
+        "message": "checkout",
         "user_id": user_id,
         "thread_id": thread_id,
     }
     res = client.post("/api/chat", json=payload)
     assert res.status_code == 200
     data = res.json()
-    assert "boş" in data["reply"].lower()
+    assert "empty" in data["reply"].lower()
     assert data["pending_action"] is None
 
 
@@ -83,7 +83,7 @@ def test_checkout_interrupt_and_button_resume_approval():
     )
 
     # 2. User requests checkout
-    res = client.post("/api/chat", json={"message": "siparişi tamamla", "user_id": user_id, "thread_id": thread_id})
+    res = client.post("/api/chat", json={"message": "complete order and checkout", "user_id": user_id, "thread_id": thread_id})
     assert res.status_code == 200
     data = res.json()
 
@@ -93,9 +93,9 @@ def test_checkout_interrupt_and_button_resume_approval():
     assert data["pending_action"]["action"] == "checkout_approval"
     assert data["pending_action"]["total_amount"] == 200.0
     assert len(data["pending_action"]["items"]) == 2
-    assert "Ödeme Özeti" in data["reply"]
+    assert "Summary" in data["reply"]
 
-    # 3. User clicks [Siparişi Onayla] button on UI -> calls POST /api/chat/resume
+    # 3. User clicks [Confirm Order] button on UI -> calls POST /api/chat/resume
     resume_payload = {
         "thread_id": thread_id,
         "user_id": user_id,
@@ -106,7 +106,7 @@ def test_checkout_interrupt_and_button_resume_approval():
     resume_data = resume_res.json()
 
     # Verify receipt message and cleared cart
-    assert "Başarıyla Alındı" in resume_data["reply"]
+    assert "Order Placed Successfully" in resume_data["reply"]
     assert "ORD-" in resume_data["reply"]
     assert resume_data["pending_action"] is None
     assert len(resume_data["cart"]) == 0
@@ -127,7 +127,7 @@ def test_checkout_interrupt_and_button_resume_approval():
 
 
 def test_checkout_interrupt_and_button_resume_cancel():
-    """Verify that clicking [İptal Et] cancels checkout and preserves cart items."""
+    """Verify that clicking Cancel cancels checkout and preserves cart items."""
     user_id = "user_cancel_buyer"
     thread_id = "thread_hitl_cancel_1"
 
@@ -137,16 +137,16 @@ def test_checkout_interrupt_and_button_resume_cancel():
     )
 
     # 1. Trigger checkout interrupt
-    res = client.post("/api/chat", json={"message": "satın al", "user_id": user_id, "thread_id": thread_id})
+    res = client.post("/api/chat", json={"message": "checkout", "user_id": user_id, "thread_id": thread_id})
     assert res.status_code == 200
     assert res.json()["pending_action"] is not None
 
-    # 2. User clicks [İptal Et]
+    # 2. User clicks Cancel
     cancel_res = client.post("/api/chat/resume", json={"thread_id": thread_id, "user_id": user_id, "approved": False})
     assert cancel_res.status_code == 200
     cancel_data = cancel_res.json()
 
-    assert "İptal Edildi" in cancel_data["reply"]
+    assert "Cancelled" in cancel_data["reply"]
     assert cancel_data["pending_action"] is None
 
     # Cart must still have the item!

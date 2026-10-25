@@ -49,18 +49,18 @@ def normalize_rank_node(state: SearchSubgraphState) -> Dict[str, Any]:
 
     # 4. Generate user-friendly numbered list response
     if not ranked:
-        reply_text = f"'{keywords}' araması için uygun ürün bulunamadı. Lütfen filtrelerinizi veya bütçenizi genişletmeyi deneyin."
+        reply_text = f"No suitable products found for '{keywords}'. Please try broadening your search or adjusting your budget."
     else:
-        lines = [f"**'{keywords}'** için bulunan en popüler ürünler:\n"]
+        lines = [f"Top popular products found for **'{keywords}'**:\n"]
         for idx, item in enumerate(ranked, start=1):
             rating_str = f" ⭐ {item.get('rating')}" if item.get("rating") else ""
             source_badge = f"[{item.get('source', '').upper()}]"
             lines.append(
                 f"{idx}. **{item.get('title')}**\n"
                 f"   💵 **${item.get('price')} {item.get('currency', 'USD')}** | {source_badge}{rating_str}\n"
-                f"   🔗 [Ürünü İncele]({item.get('url')})\n"
+                f"   🔗 [View Product]({item.get('url')})\n"
             )
-        lines.append("\n💡 *Sepete eklemek için '1. ürünü ekle' diyebilir veya detaylar hakkında soru sorabilirsiniz.*")
+        lines.append("\n💡 *To add an item to your cart, say 'add the 1st item' or ask any questions about details.*")
         reply_text = "\n".join(lines)
 
     return {

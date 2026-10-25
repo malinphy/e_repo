@@ -22,14 +22,14 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           onClick={onToggleSidebar}
           className="btn-icon header-menu-btn"
-          title="Menüyü Aç/Kapat"
+          title="Toggle Sidebar"
         >
           <Menu size={20} />
         </button>
 
         <div className="header-title-box">
           <span className="header-thread-title">
-            {activeThreadTitle || 'Yeni Alışveriş Sohbeti'}
+            {activeThreadTitle || 'New Shopping Chat'}
           </span>
         </div>
       </div>
@@ -38,15 +38,15 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="system-status-indicator">
           <span className={`status-pulse ${isBackendConnected ? 'online' : 'offline'}`} />
           <span className="status-text">
-            {isBackendConnected ? 'LangGraph Ajanı Aktif' : 'Bağlantı Kurulamadı'}
+            {isBackendConnected ? 'LangGraph Agent Online' : 'Backend Disconnected'}
           </span>
         </div>
       </div>
 
       <div className="header-right">
-        <button onClick={onOpenCart} className="btn-cart-toggle" title="Sepetimi Görüntüle">
+        <button onClick={onOpenCart} className="btn-cart-toggle" title="View Cart">
           <ShoppingBag size={18} />
-          <span className="cart-text">Sepetim</span>
+          <span className="cart-text">Cart</span>
           {cartItemCount > 0 && (
             <span className="cart-badge-pill">{cartItemCount}</span>
           )}

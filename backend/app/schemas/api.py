@@ -9,7 +9,7 @@ from .product import Product
 class ChatRequest(BaseModel):
     """Payload for POST /api/chat."""
 
-    message: str = Field(..., description="User message text", json_schema_extra={"example": "100 dolar altı bluetooth kulaklık ara"})
+    message: str = Field(..., description="User message text", json_schema_extra={"example": "Find wireless headphones under 100 dollars"})
     user_id: Optional[str] = Field(default="guest_user", description="Active user ID")
     thread_id: Optional[str] = Field(default=None, description="Optional thread/session ID for conversational memory")
 

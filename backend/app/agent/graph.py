@@ -60,7 +60,7 @@ def persist_turn_node(state: ShopState) -> Dict[str, Any]:
         thread = db.scalar(select(ChatThread).where(ChatThread.thread_id == thread_id))
         if thread:
             thread.updated_at = datetime.now(timezone.utc)
-            if not thread.title or thread.title in ("Alışveriş Sohbeti", "Sohbet", "Yeni Sohbet"):
+            if not thread.title or thread.title in ("Shopping Chat", "Chat", "New Chat"):
                 thread.title = str(user_msg)[:50].strip()
 
         # 2. Save user message

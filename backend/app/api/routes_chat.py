@@ -116,9 +116,9 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     try:
         if has_active_interrupt:
             lowered = request.message.strip().lower()
-            if any(w in lowered for w in ("evet", "onay", "tamam", "yes", "al", "öde", "ode", "satın al")):
+            if any(w in lowered for w in ("yes", "approve", "confirm", "ok", "pay", "buy")):
                 result = await _agent_graph.ainvoke(Command(resume={"approved": True}), config=config)
-            elif any(w in lowered for w in ("hayır", "hayir", "iptal", "vazgeç", "vazgec", "no", "cancel")):
+            elif any(w in lowered for w in ("no", "cancel", "abort", "stop", "decline")):
                 result = await _agent_graph.ainvoke(Command(resume={"approved": False}), config=config)
             else:
                 # Cancel pending checkout and continue with new query
@@ -134,7 +134,7 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     if result.get("__interrupt__"):
         interrupt_info = result["__interrupt__"][0].value
         pending_action = interrupt_info
-        reply_text = interrupt_info.get("summary_message") or interrupt_info.get("prompt") or "İşleminiz için onay bekleniyor."
+        reply_text = interrupt_info.get("summary_message") or interrupt_info.get("prompt") or "Awaiting approval for your action."
 
         # Persist the interrupt prompt to chat_messages
         db = SessionLocal()
@@ -158,7 +158,7 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
     else:
         # Extract assistant reply from messages
         messages = result.get("messages") or []
-        reply_text = messages[-1].content if messages else "Yanıt üretilemedi."
+        reply_text = messages[-1].content if messages else "Unable to generate reply."
 
     # Parse last_results into validated Product objects ONLY for search turns
     # (prevents QA, cart, and chitchat turns from repeating duplicate product grids)
@@ -187,7 +187,7 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
 async def resume_checkout_endpoint(request: CheckoutResumeRequest) -> ChatResponse:
     """Resumes an interrupted LangGraph checkout workflow when the user clicks an action button.
 
-    - Triggered when the user clicks [Siparişi Onayla] (approved=True) or [İptal Et] (approved=False).
+    - Triggered when the user clicks [Confirm Order] (approved=True) or [Cancel] (approved=False).
     - Uses LangGraph Command(resume={'approved': bool}) to resume execution.
     - Upon approval: creates Order and OrderItems in SQLite, purges user's Cart, and returns confirmation.
     - Upon cancel: returns cancellation notice and preserves cart items.
@@ -207,7 +207,7 @@ async def resume_checkout_endpoint(request: CheckoutResumeRequest) -> ChatRespon
     if not has_interrupt:
         raise HTTPException(
             status_code=400,
-            detail=f"Thread '{request.thread_id}' üzerinde onay bekleyen aktif bir işlem (interrupt) bulunamadı."
+            detail=f"No active pending action/approval found for thread '{request.thread_id}'."
         )
 
     try:
@@ -220,7 +220,7 @@ async def resume_checkout_endpoint(request: CheckoutResumeRequest) -> ChatRespon
         raise HTTPException(status_code=500, detail=f"Checkout resume failed: {exc}")
 
     messages = result.get("messages") or []
-    reply_text = messages[-1].content if messages else "İşlem tamamlandı."
+    reply_text = messages[-1].content if messages else "Action completed."
 
     validated_products: list[Product] = []
 
@@ -239,14 +239,14 @@ async def resume_checkout_endpoint(request: CheckoutResumeRequest) -> ChatRespon
 
 class CreateThreadRequest(BaseModel):
     user_id: Optional[str] = "guest_user"
-    title: Optional[str] = "Yeni Sohbet"
+    title: Optional[str] = "New Chat"
 
 
 @router.post("/threads", response_model=ThreadSummary, summary="Create a new chat thread (ChatGPT 'New Chat' button)")
 async def create_new_thread(req: Optional[CreateThreadRequest] = None):
     """Creates a new isolated chat thread for the user."""
     user_id = (req.user_id if req else None) or "guest_user"
-    title = (req.title if req else None) or "Yeni Sohbet"
+    title = (req.title if req else None) or "New Chat"
     thread_id = f"th_{uuid.uuid4().hex[:10]}"
 
     db = SessionLocal()
@@ -286,7 +286,7 @@ async def list_user_threads(user_id: str = Query("guest_user", description="User
             ThreadSummary(
                 thread_id=t.thread_id,
                 user_id=t.user_id,
-                title=t.title or "Sohbet",
+                title=t.title or "Chat",
                 created_at=t.created_at.isoformat() if t.created_at else "",
                 updated_at=t.updated_at.isoformat() if t.updated_at else "",
             )

@@ -28,9 +28,9 @@ def checkout_node(state: ShopState) -> Dict[str, Any]:
     # 1. Cart empty check
     if not cart_items:
         msg = (
-            "🛒 **Sepetiniz şu anda boş.**\n\n"
-            "Ödeme adımına geçebilmek için sepetinize en az bir ürün eklemelisiniz. "
-            "Beğendiğiniz ürünleri aramak için *'100 dolar altı kulaklık ara'* diyebilirsiniz."
+            "🛒 **Your cart is currently empty.**\n\n"
+            "To proceed to checkout, please add at least one item to your cart. "
+            "You can discover products by saying *'find headphones under $100'*."
         )
         return {
             "messages": [AIMessage(content=msg)],
@@ -43,7 +43,7 @@ def checkout_node(state: ShopState) -> Dict[str, Any]:
     interrupt_payload = {
         "action": "checkout_approval",
         "type": "checkout",
-        "prompt": f"Sepetinizde {len(items)} adet ürün var (Toplam: ${total_amount:.2f} {currency}). Siparişi onaylıyor musunuz?",
+        "prompt": f"You have {len(items)} item(s) in your cart (Total: ${total_amount:.2f} {currency}). Do you confirm this order?",
         "summary_message": summary_text,
         "total_amount": total_amount,
         "currency": currency,
@@ -78,9 +78,9 @@ def checkout_node(state: ShopState) -> Dict[str, Any]:
         }
     else:
         cancel_msg = (
-            "❌ **Sipariş İptal Edildi**\n\n"
-            "Ödeme işlemi isteğiniz doğrultusunda iptal edildi. "
-            "Sepetinizdeki ürünler silinmedi, istediğiniz zaman devam edebilirsiniz."
+            "❌ **Order Cancelled**\n\n"
+            "The checkout process was cancelled as requested. "
+            "Your cart items remain saved so you can resume whenever you're ready."
         )
         return {
             "messages": [AIMessage(content=cancel_msg)],
