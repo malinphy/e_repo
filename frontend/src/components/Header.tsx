@@ -38,7 +38,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="system-status-indicator">
           <span className={`status-pulse ${isBackendConnected ? 'online' : 'offline'}`} />
           <span className="status-text">
-            {isBackendConnected ? 'LangGraph Agent Online' : 'Backend Disconnected'}
+            {isBackendConnected ? 'Agent Online' : 'Offline'}
           </span>
         </div>
       </div>

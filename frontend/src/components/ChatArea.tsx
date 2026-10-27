@@ -149,7 +149,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           </button>
         </form>
         <div className="input-helper-text">
-          Press Enter to send • Shift + Enter for new line • Routed by LangGraph
+          Press Enter to send • Shift + Enter for new line
         </div>
       </div>
     </div>

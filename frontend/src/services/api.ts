@@ -14,7 +14,7 @@ class ApiService {
     this.baseUrl = baseUrl;
   }
 
-  // POST /api/chat - Send message to LangGraph agent
+  // POST /api/chat - Send message to assistant agent
   async sendMessage(
     message: string,
     userId: string = 'guest_user',

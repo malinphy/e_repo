@@ -39,7 +39,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
             <div className="brand-text">
               <span className="brand-title">ShopAgent</span>
-              <span className="brand-tag">LangGraph AI</span>
+              <span className="brand-tag">AI Assistant</span>
             </div>
           </div>
           <button
