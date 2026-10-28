@@ -546,6 +546,17 @@
   margin-bottom: 4px;
 }
 
+.bubble-link {
+  color: var(--accent-cyan);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 500;
+  transition: opacity 0.15s ease;
+}
+.bubble-link:hover {
+  opacity: 0.8;
+}
+
 /* Loading indicator */
 .assistant-loading-indicator {
   display: flex;

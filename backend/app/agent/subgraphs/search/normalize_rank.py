@@ -58,7 +58,6 @@ def normalize_rank_node(state: SearchSubgraphState) -> Dict[str, Any]:
             lines.append(
                 f"{idx}. **{item.get('title')}**\n"
                 f"   💵 **${item.get('price')} {item.get('currency', 'USD')}** | {source_badge}{rating_str}\n"
-                f"   🔗 [View Product]({item.get('url')})\n"
             )
         lines.append("\n💡 *To add an item to your cart, say 'add the 1st item' or ask any questions about details.*")
         reply_text = "\n".join(lines)
