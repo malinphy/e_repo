@@ -29,42 +29,74 @@ const getIntentInfo = (intent?: string) => {
   }
 };
 
-// Simple Markdown Formatter
+// Parse inline markdown tokens: bold and links
+const parseInlineContent = (content: string) => {
+  const regex = /(\[.*?\]\(https?:\/\/[^\s)]+\)|\*\*.*?\*\*)/g;
+  const tokens = content.split(regex);
+
+  return tokens.map((token, i) => {
+    if (token.startsWith('**') && token.endsWith('**')) {
+      return <strong key={i}>{token.slice(2, -2)}</strong>;
+    }
+    const linkMatch = token.match(/^\[(.*?)\]\((https?:\/\/[^\s)]+)\)$/);
+    if (linkMatch) {
+      return (
+        <a
+          key={i}
+          href={linkMatch[2]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="bubble-link"
+        >
+          {linkMatch[1]}
+        </a>
+      );
+    }
+    return token;
+  });
+};
+
+// Markdown Formatter with line filtering for clean visual presentation
 const renderFormattedText = (text: string) => {
   if (!text) return null;
 
-  // Split into paragraphs / lines
   const lines = text.split('\n');
 
-  return lines.map((line, idx) => {
-    if (!line.trim()) {
-      return <div key={idx} className="bubble-line-break" />;
-    }
-
-    // Bold replacement (**text**)
-    const parts = line.split(/(\*\*.*?\*\*)/g);
-    const formattedParts = parts.map((part, pIdx) => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={pIdx}>{part.slice(2, -2)}</strong>;
+  return lines
+    .filter((line) => {
+      const trimmed = line.trim();
+      // Filter out redundant "View Product" / product link lines that clutter the bubble
+      if (
+        trimmed.startsWith('🔗 [View Product]') ||
+        trimmed.startsWith('[View Product](') ||
+        trimmed.startsWith('🔗 [Product Link]')
+      ) {
+        return false;
       }
-      return part;
-    });
+      return true;
+    })
+    .map((line, idx) => {
+      if (!line.trim()) {
+        return <div key={idx} className="bubble-line-break" />;
+      }
 
-    // List item check
-    if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+      const formattedParts = parseInlineContent(line);
+
+      // List item check
+      if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+        return (
+          <li key={idx} className="bubble-list-item">
+            {formattedParts}
+          </li>
+        );
+      }
+
       return (
-        <li key={idx} className="bubble-list-item">
+        <p key={idx} className="bubble-paragraph">
           {formattedParts}
-        </li>
+        </p>
       );
-    }
-
-    return (
-      <p key={idx} className="bubble-paragraph">
-        {formattedParts}
-      </p>
-    );
-  });
+    });
 };
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
