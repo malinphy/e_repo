@@ -11,6 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 DOTENV_PATH = REPO_ROOT / ".env"
 SQLITE_DIR = REPO_ROOT / "backend" / "data"
 SQLITE_PATH = SQLITE_DIR / "ecommerce.db"
+CHECKPOINTS_PATH = SQLITE_DIR / "checkpoints.db"
 
 # Force load .env into os.environ with override=True to overwrite stale Windows user/system env vars
 if DOTENV_PATH.is_file():
@@ -28,6 +29,7 @@ class Settings(BaseSettings):
 
     # Database configuration (SQLite only)
     sqlite_db_path: str = str(SQLITE_PATH)
+    checkpoints_db_path: str = str(CHECKPOINTS_PATH)
 
     # API Keys
     OPENAI_API_KEY: str = ""

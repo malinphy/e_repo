@@ -1,16 +1,17 @@
 """Main Agent Coordinator Graph."""
 from __future__ import annotations
 
+import asyncio
 import logging
+from pathlib import Path
 from typing import Any, Dict, Literal
+import aiosqlite
 from langchain_core.messages import AIMessage
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph import END, START, StateGraph
 
-from sqlalchemy import select
-
-from ..core.database import SessionLocal
-from ..models.chat import ChatMessage
+from ..core.config import get_settings
 from .nodes.chitchat import chitchat_node
 from .nodes.load_context import load_context_node
 from .nodes.router import router_node
@@ -22,6 +23,23 @@ from .subgraphs.search.graph import build_search_subgraph
 
 logger = logging.getLogger(__name__)
 
+_checkpointer_by_loop: dict[asyncio.AbstractEventLoop, tuple[AsyncSqliteSaver, aiosqlite.Connection]] = {}
+_graph_by_loop: dict[asyncio.AbstractEventLoop, Any] = {}
+
+
+async def get_sqlite_checkpointer() -> AsyncSqliteSaver:
+    """Returns an AsyncSqliteSaver bound to the current running event loop."""
+    loop = asyncio.get_running_loop()
+    if loop not in _checkpointer_by_loop:
+        settings = get_settings()
+        db_path = settings.checkpoints_db_path
+        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+        conn = await aiosqlite.connect(db_path)
+        saver = AsyncSqliteSaver(conn)
+        await saver.setup()
+        _checkpointer_by_loop[loop] = (saver, conn)
+    return _checkpointer_by_loop[loop][0]
+
 
 def route_after_router(state: ShopState) -> Literal["search", "cart", "qa", "chitchat", "checkout"]:
     """Conditional routing based on structured intent."""
@@ -31,62 +49,8 @@ def route_after_router(state: ShopState) -> Literal["search", "cart", "qa", "chi
     return "search"
 
 
-def persist_turn_node(state: ShopState) -> Dict[str, Any]:
-    """Saves user message, assistant reply, and structured products into SQLite."""
-    thread_id = state.get("thread_id")
-    messages = state.get("messages") or []
-    intent = state.get("intent")
-
-    if not thread_id or len(messages) < 2:
-        return {}
-
-    user_msg = messages[-2].content if len(messages) >= 2 else ""
-    assistant_msg = messages[-1].content
-
-    # Prepare structured metadata (store last_results and search_query only on search turns)
-    metadata: Dict[str, Any] = {}
-    if intent == "search":
-        if state.get("last_results"):
-            metadata["products"] = state.get("last_results")
-        if state.get("search_query"):
-            metadata["search_query"] = state.get("search_query")
-
-    db = SessionLocal()
-    try:
-        from datetime import datetime, timezone
-        from ..models.chat import ChatThread
-
-        # 1. Update thread updated_at and refine title if default
-        thread = db.scalar(select(ChatThread).where(ChatThread.thread_id == thread_id))
-        if thread:
-            thread.updated_at = datetime.now(timezone.utc)
-            if not thread.title or thread.title in ("Shopping Chat", "Chat", "New Chat"):
-                thread.title = str(user_msg)[:50].strip()
-
-        # 2. Save user message
-        db.add(ChatMessage(thread_id=thread_id, role="user", content=str(user_msg), intent=intent))
-        # 3. Save assistant message with structured products metadata
-        db.add(
-            ChatMessage(
-                thread_id=thread_id,
-                role="assistant",
-                content=str(assistant_msg),
-                intent=intent,
-                metadata_json=metadata if metadata else None,
-            )
-        )
-        db.commit()
-    except Exception as exc:
-        db.rollback()
-        logger.warning("Failed to persist chat message: %s", exc)
-    finally:
-        db.close()
-
-    return {}
-
-
 def build_shop_graph(checkpointer: Any | None = None):
-    """Build and compile the main E-Commerce Shop Graph."""
+    """Build and compile the main E-Commerce Shop Graph without redundant persist nodes."""
     workflow = StateGraph(ShopState)
 
     # 1. Register Nodes & Subgraphs
@@ -97,7 +61,6 @@ def build_shop_graph(checkpointer: Any | None = None):
     workflow.add_node("qa", build_qa_subgraph())
     workflow.add_node("chitchat", chitchat_node)
     workflow.add_node("checkout", checkout_node)
-    workflow.add_node("persist_turn", persist_turn_node)
 
     # 2. Add Edges
     workflow.add_edge(START, "load_context")
@@ -115,12 +78,21 @@ def build_shop_graph(checkpointer: Any | None = None):
         },
     )
 
-    workflow.add_edge("search", "persist_turn")
-    workflow.add_edge("cart", "persist_turn")
-    workflow.add_edge("qa", "persist_turn")
-    workflow.add_edge("chitchat", "persist_turn")
-    workflow.add_edge("checkout", "persist_turn")
-    workflow.add_edge("persist_turn", END)
+    # All subgraphs flow directly to END (checkpointer persists state automatically)
+    workflow.add_edge("search", END)
+    workflow.add_edge("cart", END)
+    workflow.add_edge("qa", END)
+    workflow.add_edge("chitchat", END)
+    workflow.add_edge("checkout", END)
 
     memory = checkpointer or MemorySaver()
     return workflow.compile(checkpointer=memory)
+
+
+async def get_compiled_shop_graph():
+    """Returns the compiled shop graph configured with the loop's AsyncSqliteSaver."""
+    loop = asyncio.get_running_loop()
+    if loop not in _graph_by_loop:
+        checkpointer = await get_sqlite_checkpointer()
+        _graph_by_loop[loop] = build_shop_graph(checkpointer=checkpointer)
+    return _graph_by_loop[loop]

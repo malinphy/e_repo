@@ -1,0 +1,15 @@
+services:
+  shopagent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${DOCKERHUB_USERNAME:-shopagent}/shopagent:latest
+    container_name: shopagent-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/backend/data
+
