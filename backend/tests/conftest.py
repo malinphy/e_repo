@@ -6,8 +6,15 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from backend.app.core.database import Base
+from backend.app.core.database import Base, engine as default_engine
 import backend.app.models  # noqa: F401 - ensure models are registered
+
+
+@pytest.fixture(scope="session", autouse=True)
+def initialize_default_database():
+    """Ensure SQLite tables exist in the default database before any test runs."""
+    Base.metadata.create_all(bind=default_engine)
+    yield
 
 
 @pytest.fixture(scope="session")
