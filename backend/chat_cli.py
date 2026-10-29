@@ -12,7 +12,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from langchain_core.messages import HumanMessage
-from backend.app.agent.graph import build_shop_graph
+from backend.app.agent.graph import get_compiled_shop_graph
 
 
 async def main():
@@ -27,7 +27,7 @@ async def main():
     print("   - To quit: 'exit' or 'q'")
     print("-" * 65)
 
-    app = build_shop_graph()
+    app = await get_compiled_shop_graph()
     thread_id = f"test_thread_{uuid.uuid4().hex[:6]}"
     user_id = "test_user_alex"
     config = {"configurable": {"thread_id": thread_id}}

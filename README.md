@@ -7,6 +7,8 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.0+-646CFF.svg?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![SQLite](https://img.shields.io/badge/SQLite-3-003B57.svg?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+[![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED.svg?logo=docker&logoColor=white)](https://hub.docker.com/)
+[![CI/CD](https://img.shields.io/badge/GitHub_Actions-Automated_Build-2088FF.svg?logo=githubactions&logoColor=white)](.github/workflows/docker-publish.yml)
 
 An agentic shopping assistant powered by **LangGraph**, **FastAPI**, and a **Vite + React (TypeScript)** frontend. It searches across multiple marketplaces (**Walmart**, **eBay**, **Amazon**, and **Google Shopping**) via SerpAPI, manages a deterministic shopping cart, answers product inquiries, and provides **Human-in-the-Loop checkout confirmation** with strict ChatGPT-style conversation thread isolation.
 
@@ -26,6 +28,7 @@ An agentic shopping assistant powered by **LangGraph**, **FastAPI**, and a **Vit
   - [Start Backend API](#start-backend-api)
   - [Start Frontend UI](#start-frontend-ui)
   - [(Optional) Terminal Chat CLI](#optional-terminal-chat-cli)
+- [Running with Docker & Docker Compose](#-running-with-docker--docker-compose)
 - [How to Use the Assistant](#-how-to-use-the-assistant)
 - [API Reference](#-api-reference)
 - [Running Tests](#-running-tests)
@@ -221,6 +224,58 @@ You can also test the LangGraph workflow directly from your terminal without ope
 
 ```bash
 python -m backend.chat_cli
+```
+
+---
+
+## 🐳 Running with Docker & Docker Compose
+
+The application is packaged into a **Unified Single Container** that bundles both the compiled React frontend and the FastAPI backend into an optimized multi-stage build.
+
+### 1. Run Prebuilt Image from Docker Hub
+
+Provide your API keys via a local `.env` file and mount a local folder for SQLite database persistence:
+
+```bash
+docker run -d \
+  --name shopagent-app \
+  -p 8000:8000 \
+  --env-file .env \
+  -v $(pwd)/data:/app/backend/data \
+  <YOUR_DOCKERHUB_USERNAME>/shopagent:latest
+```
+
+Open your browser at **[http://localhost:8000](http://localhost:8000)**!
+
+> 🔒 **Security & Privacy:** The published Docker image contains zero hardcoded keys or credentials. Your `.env` variables (`OPENAI_API_KEY`, `SERPAPI_API_KEY`) and your SQLite cart/chat data remain entirely on your local host.
+
+---
+
+### 2. Run with Docker Compose
+
+Ensure your `.env` file exists in the project root, then execute:
+
+```bash
+docker compose up -d
+```
+
+To view logs:
+```bash
+docker compose logs -f
+```
+
+To stop:
+```bash
+docker compose down
+```
+
+---
+
+### 3. Build Image Locally
+
+```bash
+docker build -t shopagent:latest .
+docker run -d -p 8000:8000 --env-file .env -v $(pwd)/data:/app/backend/data shopagent:latest
 ```
 
 ---

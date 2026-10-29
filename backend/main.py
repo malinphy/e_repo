@@ -1,6 +1,7 @@
 """ASGI server entrypoint."""
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -12,5 +13,8 @@ import uvicorn
 from backend.app.main import app
 
 if __name__ == "__main__":
-    print("[*] Starting E-Commerce Agent API on http://127.0.0.1:8000 (Docs: http://127.0.0.1:8000/docs)")
-    uvicorn.run("backend.app.main:app", host="127.0.0.1", port=8000, reload=True)
+    host = os.environ.get("HOST", "127.0.0.1")
+    port = int(os.environ.get("PORT", "8000"))
+    reload = os.environ.get("RELOAD", "false").lower() in ("true", "1") if host == "0.0.0.0" else True
+    print(f"[*] Starting E-Commerce Agent API on http://{host}:{port} (Docs: http://{host}:{port}/docs)")
+    uvicorn.run("backend.app.main:app", host=host, port=port, reload=reload)
