@@ -149,3 +149,6 @@ test_lm.py
 .agents
 backend/data
 new_design.md
+/k8s
+/k8s-single
+test.yaml
